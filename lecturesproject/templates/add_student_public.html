@@ -1,0 +1,144 @@
+<!-- templates/add_student_public.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KLENO - Student Registration</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to right, #66D4FF, #00BFFF);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 6px 15px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #020508;
+            margin-bottom: 10px;
+        }
+
+        h2 b {
+            color: #66D4FF;
+            font-size: 1.4em;
+        }
+
+        h5 {
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus, select:focus {
+            border-color: #0078D4;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0,120,212,0.3);
+        }
+
+        button {
+            background-color: #0078D4;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #005a9e;
+        }
+
+        footer {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #777;
+        }
+
+        footer b {
+            color: #66D4FF;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to <b>KLENO</b></h2>
+        <h5><b>CAUTION</b> please enter the correct module code for easier identification by your lecture if the module code is incorrect the lecture may not find your student details</h5>
+        <h5>Please register below</h5>
+        
+
+        <form method="post" action="/submit-student/{{ token }}">
+            <!-- University Dropdown -->
+            <label for="university">University:</label>
+            <select name="university" id="university" required>
+                <option value="">-- Select University --</option>
+                <option value="unza">University of Zambia</option>
+                <option value="cbu">Copperbelt University</option>
+                <option value="mu">Mulungushi University</option>
+                <option value="ehc">Evelyn Hone College</option>
+                <option value="cavendish">Cavendish University</option>
+                <option value="other">Other</option>
+            </select>
+
+            <!-- Module Code -->
+            <label for="module">Module Code:</label>
+            <input type="text" name="module" id="module" placeholder="e.g. CS101" required>
+
+            <!-- Full Name -->
+            <label for="name">Full Name:</label>
+            <input type="text" name="name" id="name" placeholder="Enter your full name" required>
+
+            <!-- Student ID -->
+            <label for="student_id">Student ID:</label>
+            <input type="text" name="student_id" id="student_id" placeholder="Enter your student number" required>
+
+            <!-- Class Type Dropdown -->
+            <label for="class_type">Class Type:</label>
+            <select name="class_type" id="class_type" required>
+                <option value="">-- Select Class Type --</option>
+                <option value="fulltime">Full-time</option>
+                <option value="parttime">Part-time</option>
+                <option value="distance">Distance Learning</option>
+                <option value="evening">Evening</option>
+            </select>
+
+            <!-- Submit -->
+            <button type="submit">Submit</button>
+        </form>
+
+        <footer>
+            Powered by <b>KLENO</b> © {{ now().year if now else "2025" }}
+        </footer>
+    </div>
+</body>
+</html>

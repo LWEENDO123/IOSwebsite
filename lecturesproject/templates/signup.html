@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signup</title>
+    <style>
+        body { font-family: Arial, sans-serif; background:#f0f2f5; padding:40px; }
+        .form-box { background:#fff; padding:20px; max-width:400px; margin:auto; border-radius:8px; box-shadow:0 0 5px rgba(0,0,0,0.1); }
+        label { display:block; margin-top:10px; }
+        input { width:100%; padding:8px; margin-top:5px; }
+        button { margin-top:20px; padding:10px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer; }
+        button:hover { background:#0056b3; }
+        a { display:block; margin-top:15px; text-align:center; color:#007bff; text-decoration:none; }
+    </style>
+</head>
+<body>
+    <div class="form-box">
+        <h2>Lecturer Signup</h2>
+        <form method="post" action="/signup">
+            <label>Username</label>
+            <input type="text" name="username" required>
+            <label>Email</label>
+            <input type="email" name="email" required>
+            <label>Password</label>
+            <input type="password" name="password" required>
+            <label>Full Name</label>
+            <input type="text" name="full_name">
+            <button type="submit">Signup</button>
+        </form>
+        <a href="/login">Already have an account? Login</a>
+    </div>
+</body>
+</html>

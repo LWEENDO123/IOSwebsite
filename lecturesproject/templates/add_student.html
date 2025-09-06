@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <nav style="background:#333; padding:10px; margin-bottom:20px;">
+    <a href="/" style="color:white; margin-right:15px; text-decoration:none;">Home</a>
+    <a href="/add-student-ui" style="color:white; margin-right:15px; text-decoration:none;">Add Student</a>
+    <a href="/students-dashboard" style="color:white; margin-right:15px; text-decoration:none;">Dashboard</a>
+    <a href="/score-analytics-ui" style="color:white; margin-right:15px; text-decoration:none;">Analytics</a>
+    <a href="/logout" style="color:white; text-decoration:none;">Logout</a>
+    </nav>
+
+    <title>Add Student & View Database</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f5f6fa;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+
+        .form-section, .table-section {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+
+        .form-section {
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .form-section h2 {
+            margin-bottom: 10px;
+        }
+
+        .form-section p {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .form-section label {
+            font-weight: bold;
+            display: block;
+            margin-top: 16px;
+        }
+
+        .form-section input,
+        .form-section select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .form-section button {
+            margin-top: 20px;
+            padding: 10px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .form-section button:hover {
+            background-color: #0056b3;
+        }
+
+        .table-section {
+            flex: 2;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .table-section h2 {
+            margin-bottom: 10px;
+        }
+
+        .table-section p {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-form select {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .search-form button {
+            padding: 8px 12px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .search-form button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f1f3f5;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .refresh-btn {
+            margin-bottom: 10px;
+            background-color: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .refresh-btn:hover {
+            background-color: #e0a800;
+        }
+
+        .success-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-popup" id="successPopup">Student successfully added!</div>
+
+    <div class="container">
+        <!-- Add Student Form -->
+        <div class="form-section">
+            <h2>Add Student</h2>
+            <p>Use this form to add a student to the database. Please enter full and accurate details.</p>
+            <form method="post" action="/add-student" onsubmit="showSuccessPopup()">
+                <label>University:</label>
+                <select name="university" required>
+                    <option value="">Select university</option>
+                    <option value="UNZA">University of Zambia (UNZA)</option>
+                    <option value="UNILUS">University of Lusaka (UNILUS)</option>
+                    <option value="CUZ">Cavendish University Zambia (CUZ)</option>
+                    <option value="NIPA">National Institute of Public Administration (NIPA)</option>
+                    <option value="ZCAS">ZCAS University</option>
+                    <option value="CHRESO">Chreso University</option>
+                    <option value="Eden">Eden University</option>
+                    <option value="Rusangu">Rusangu University</option>
+                    <option value="Mulungushi">Mulungushi University</option>
+                    <option value="Copperbelt">Copperbelt University (CBU)</option>
+                </select>
+
+                <label>Module:</label>
+                <!-- Free-text input for module -->
+                <input type="text" name="module" placeholder="Enter module name" required>
+
+                <label>Name:</label>
+                <input type="text" name="name" placeholder="Enter full name here" required>
+
+                <label>Student ID:</label>
+                <input type="text" name="student_id" placeholder="Enter student ID" required>
+
+                <label>Class Type:</label>
+                <select name="class_type" required>
+                    <option value="">Select class type</option>
+                    <option value="Day">Day</option>
+                    <option value="DL">Distance Learning (DL)</option>
+                    <option value="Evening">Evening</option>
+                </select>
+
+                <button type="submit">Submit</button>
+            </form>
+
+
+             
+            
+            
+          <a class="btn btn-success" href="/qr/register-link">📲 Download QR Code</a>
+          <p class="context">
+            This QR code lets students self-register. Share it in class and each student 
+            can scan to open the registration page on their phone.
+          </p>
+        </div>
+       
+
+
+        <!-- Student Table Section -->
+        <div class="table-section">
+            <h2>Student Database</h2>
+            <p>This table shows all students currently in the database. You can filter by university, module, or class type. To delete students, check the box and click "Delete Selected" <b>PLEASE click filter to see students</b>.</p>
+
+            <!-- Filter Form -->
+            <form class="search-form" method="get" action="/get-students">
+                <select name="university">
+                    <option value="">Select university</option>
+                    <option value="UNZA">UNZA</option>
+                    <option value="UNILUS">UNILUS</option>
+                    <option value="CUZ">CUZ</option>
+                    <option value="NIPA">NIPA</option>
+                    <option value="ZCAS">ZCAS</option>
+                    <option value="CHRESO">CHRESO</option>
+                    <option value="Eden">Eden</option>
+                    <option value="Rusangu">Rusangu</option>
+                    <option value="Mulungushi">Mulungushi</option>
+                    <option value="Copperbelt">CBU</option>
+                </select>
+
+                <select name="module" id="filterModuleDropdown">
+                    <option value="">Loading modules...</option>
+                </select>
+
+                <select name="class_type">
+                    <option value="">Select class type</option>
+                    <option value="Day">Day</option>
+                    <option value="DL">DL</option>
+                    <option value="Evening">Evening</option>
+                </select>
+
+                <button type="submit">Filter</button>
+            </form>
+
+            <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+
+            <!-- Delete Form -->
+            <form method="post" action="/delete-students">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Name</th>
+                            <th>Student ID</th>
+                            <th>University</th>
+                            <th>Module</th>
+                            <th>Class Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td><input type="checkbox" name="delete_ids" value="{{ student.student_id }}"></td>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.student_id }}</td>
+                            <td>{{ student.university }}</td>
+                            <td>{{ student.module }}</td>
+                            <td>{{ student.class_type }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" style="margin-top: 10px; background-color: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+                    Delete Selected
+                </button>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        function showSuccessPopup() {
+            const popup = document.getElementById('successPopup');
+            popup.style.display = 'block';
+            setTimeout(() => {
+                popup.style.display = 'none';
+            }, 3000);
+        }
+
+        // Load modules into filter dropdown only
+        window.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/modules')
+                .then(res => {
+                    if (!res.ok) throw new Error("Failed to fetch modules");
+                    return res.json();
+                })
+                .then(modules => {
+                    const filterDropdown = document.getElementById('filterModuleDropdown');
+
+                    filterDropdown.innerHTML = '<option value="">Select module</option>';
+                    modules.forEach(mod => {
+                        const option = document.createElement('option');
+                        option.value = mod.trim();
+                        option.textContent = mod.trim();
+                        filterDropdown.appendChild(option);
+                    });
+                })
+                .catch(err => {
+                    console.error("Module fetch error:", err);
+                });
+        });
+    </script>
+</body>
+</html>

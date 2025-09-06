@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lecturer Portal</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .flex-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .feature-box {
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            width: 350px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .feature-box:hover {
+            transform: scale(1.02);
+        }
+
+        .feature-box h3 {
+            margin-top: 0;
+            color: #0077cc;
+        }
+
+        .feature-box p {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .feature-box a {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 12px;
+            background-color: #0077cc;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .feature-box a:hover {
+            background-color: #005fa3;
+        }
+
+        /* Table styling */
+        table {
+            margin: 50px auto;
+            border-collapse: collapse;
+            width: 80%;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+
+        th {
+            background-color: #0077cc;
+            color: white;
+        }
+
+        td a {
+            color: #0077cc;
+            text-decoration: none;
+        }
+
+        td a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<script>
+    window.addEventListener('DOMContentLoaded', () => {
+        const banner = document.getElementById('welcome-banner');
+        banner.style.opacity = 0;
+        banner.style.display = 'block';
+
+        let opacity = 0;
+        const fadeIn = setInterval(() => {
+            opacity += 0.05;
+            banner.style.opacity = opacity;
+            if (opacity >= 1) clearInterval(fadeIn);
+        }, 30);
+    });
+</script>
+
+
+<body>
+<div class="container">
+    <div id="welcome-banner" style="
+    background-color: #f0f8ff;
+    border: 1px solid #0077cc;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px auto;
+    width: 80%;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: none;">
+    <h2>Welcome to KLENO Lectures Portal 🎓</h2>
+    <p>
+        This platform helps lecturers manage student data, track academic performance, and run analytics — all in one place.
+        KLENO is currently in <strong>beta</strong>, and we’re continuously improving based on your feedback contact or whatsapp 0974231906 on what features you would like seeing been added to the platform to help you be more effecient in your work eg like mybe a lession planner to help you write one with easy and fast allowing you time to do other work and manage your time.<b>CAUTION kleno is not responsible for anyloss of data please do not rely on this platform completely that it becomes the only place to place your data we advice you keep your data backup and use our platform at the moment to easy your work</b>
+    </p>
+</div>
+
+    <div class="flex-container">
+
+        <!-- Manual Student Input -->
+        <div class="feature-box">
+            <h3>Manual Student Input</h3>
+            <p>
+                Enter student details such as name, ID, university, and module. View and manage all registered students.
+            </p>
+            <a href="/add-student-ui">Go to Input Form</a>
+        </div>
+
+        <!-- Mark Entry and Score Tracking -->
+        <div class="feature-box">
+            <h3>Mark Entry & Score Tracking</h3>
+            <p>
+                Record academic scores for students. View submitted marks and ensure secure performance tracking.
+            </p>
+            <a href="/students-dashboard">Enter Marks</a>
+        </div>
+
+        <!-- Performance Analytics -->
+        <div class="feature-box">
+            <h3>Performance Analytics</h3>
+            <p>
+                Analyze student performance. View average scores and identify students within specific score ranges.
+            </p>
+           <a href="/score-analytics-ui">Run Analytics</a>
+        </div>
+
+        <!-- Smart Notification System -->
+        <div class="feature-box">
+            <h3>Smart Notification System</h3>
+            <p>
+                Get alerts about your teaching schedule, room assignments, and class times — delivered to your smartphone.
+            </p>
+            <a href="#">Coming Soon</a>
+        </div>
+
+    </div>
+
+   

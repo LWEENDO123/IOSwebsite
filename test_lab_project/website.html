@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Set Reminder</title>
+</head>
+<body>
+  <h2>Set a Class Reminder</h2>
+  <form id="reminderForm">
+    <label>University:</label><br>
+    <input type="text" id="university"><br><br>
+
+    <label>Class Number:</label><br>
+    <input type="text" id="classNumber"><br><br>
+
+    <label>Date & Time (Local):</label><br>
+    <input type="datetime-local" id="date"><br><br>
+
+    <button type="submit">Submit Reminder</button>
+  </form>
+
+  <script>
+    document.getElementById("reminderForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const date = document.getElementById("date").value.replace("T", " ");
+      const university = document.getElementById("university").value;
+      const classNumber = document.getElementById("classNumber").value;
+
+      const payload = {
+        date: date,
+        timezone: timezone,
+        university: university,
+        class_number: classNumber
+      };
+
+      const response = await fetch("http://localhost:8000/add-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      alert(result.message);
+    });
+  </script>
+</body>
+</html>

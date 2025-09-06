@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <nav style="background:#333; padding:10px; margin-bottom:20px;">
+    <a href="/" style="color:white; margin-right:15px; text-decoration:none;">Home</a>
+    <a href="/add-student-ui" style="color:white; margin-right:15px; text-decoration:none;">Add Student</a>
+    <a href="/students-dashboard" style="color:white; margin-right:15px; text-decoration:none;">Dashboard</a>
+    <a href="/score-analytics-ui" style="color:white; margin-right:15px; text-decoration:none;">Analytics</a>
+    <a href="/logout" style="color:white; text-decoration:none;">Logout</a>
+    </nav>
+    <title>Score Analytics</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f0f2f5;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1, h2, h3 {
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 30px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        label {
+            margin-right: 10px;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            padding: 6px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 6px 12px;
+            background-color: #0078D4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #005a9e;
+        }
+
+        .summary-box {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .range-section {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .student-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+            width: calc(25% - 20px);
+            min-width: 200px;
+        }
+
+        .student-card h4 {
+            margin: 0 0 10px;
+            color: #0078D4;
+        }
+
+        .student-card p {
+            margin: 4px 0;
+            font-size: 14px;
+            color: #555;
+        }
+
+        @media (max-width: 800px) {
+            .student-card {
+                width: calc(50% - 20px);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .student-card {
+                width: 100%;
+            }
+        }
+
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <h1>Score Analytics</h1>
+
+  <form method="get" action="/score-analytics-ui">
+    <label>University:</label>
+    <select name="university">
+        <option value="">-- All Universities --</option>
+        {% for u in universities %}
+            <option value="{{ u }}" {% if u == university %}selected{% endif %}>{{ u }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Module:</label>
+    <select name="module">
+        <option value="">-- All Modules --</option>
+        {% for m in modules %}
+            <option value="{{ m }}" {% if m == module %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+    </select>
+
+    <label>Class Type:</label>
+    <select name="class_type">
+        <option value="">-- All Class Types --</option>
+        {% for c in class_types %}
+            <option value="{{ c }}" {% if c == class_type %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+    </select>
+
+    <button type="submit">Filter</button>
+  </form>
+
+    <a href="/">Homepage</a>
+
+    {% if message %}
+        <p>{{ message }}</p>
+    {% else %}
+        <div class="summary-box">
+            <h2>Average Score: {{ average | round(2) }}</h2>
+        </div>
+
+        {% for range, students in score_ranges.items() %}
+            <div class="range-section">
+                <h3>Scores between {{ range }}</h3>
+                {% if students %}
+                    <div class="card-grid">
+                        {% for student in students %}
+                            <div class="student-card">
+                                <h4>{{ student.name }}</h4>
+                                <p><strong>Student ID:</strong> {{ student.student_id }}</p>
+                                <p><strong>Mark:</strong> {{ student.mark }}</p>
+                                <p><strong>University:</strong> {{ student.university }}</p>
+                                <p><strong>Module:</strong> {{ student.module }}</p>
+                                <p><strong>Class Type:</strong> {{ student.class_type }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No students in this range.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <footer>
+        &copy; {{ now().year if now else "2025" }} Score Analytics Dashboard. Built with ❤️ by KLENO.
+    </footer>
+</body>
+</html>

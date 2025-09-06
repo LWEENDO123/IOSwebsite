@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <nav style="background:#333; padding:10px; margin-bottom:20px;">
+    <a href="/" style="color:white; margin-right:15px; text-decoration:none;">Home</a>
+    <a href="/add-student-ui" style="color:white; margin-right:15px; text-decoration:none;">Add Student</a>
+    <a href="/students-dashboard" style="color:white; margin-right:15px; text-decoration:none;">Dashboard</a>
+    <a href="/score-analytics-ui" style="color:white; margin-right:15px; text-decoration:none;">Analytics</a>
+    <a href="/logout" style="color:white; text-decoration:none;">Logout</a>
+    </nav>
+
+    <title>Students Dashboard</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            margin: 40px;
+            background-color: #f9f9f9;
+        }
+
+        h2 {
+            margin-top: 40px;
+            color: #333;
+        }
+
+        p.context {
+            font-size: 14px;
+            color: #555;
+            margin: 6px 0 15px 0;
+        }
+
+        form {
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px 14px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #0078D4;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f7f7f7;
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 4px;
+        }
+
+        .btn {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            margin-top: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background-color: #a71d2a;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+        }
+
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+
+        .add-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .add-button:hover {
+            background-color: #45a049;
+        }
+
+        @media screen and (max-width: 768px) {
+            table, th, td {
+                font-size: 14px;
+            }
+
+            input[type="number"] {
+                width: 60px;
+            }
+
+            .btn, .add-button {
+                padding: 6px 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Student Database Table -->
+    <h2>Student Database</h2>
+    <p class="context">
+        This table stores your students but does not yet have marks. 
+        You can assign marks or delete students who should not be in the list.
+    </p>
+
+    <form method="get" action="/students-dashboard">
+        <label for="university">University:</label>
+        <input type="text" id="university" name="university" value="{{ university }}">
+
+        <label for="module">Module:</label>
+        <input type="text" id="module" name="module" value="{{ module }}">
+
+        <label for="class_type">Class Type:</label>
+        <input type="text" id="class_type" name="class_type" value="{{ class_type }}">
+
+        <button class="btn" type="submit">Apply Filter</button>
+    </form>
+
+    <form method="post" action="/delete-students">
+        <input type="hidden" name="university" value="{{ university }}">
+        <input type="hidden" name="module" value="{{ module }}">
+        <input type="hidden" name="class_type" value="{{ class_type }}">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Name</th>
+                    <th>Student ID</th>
+                    <th>University</th>
+                    <th>Module</th>
+                    <th>Class Type</th>
+                    <th>Mark</th>
+                    <th>Add Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                <tr>
+                    <td><input type="checkbox" name="delete_ids" value="{{ student.student_id }}"></td>
+                    <td>{{ student.name }}</td>
+                    <td>{{ student.student_id }}</td>
+                    <td>{{ student.university }}</td>
+                    <td>{{ student.module }}</td>
+                    <td>{{ student.class_type }}</td>
+                    <td>
+                        <input type="number" name="mark_{{ student.student_id }}" step="0.01">
+                        <input type="hidden" name="name_{{ student.student_id }}" value="{{ student.name }}">
+                        <input type="hidden" name="student_id_{{ student.student_id }}" value="{{ student.student_id }}">
+                        <input type="hidden" name="university_{{ student.student_id }}" value="{{ student.university }}">
+                        <input type="hidden" name="module_{{ student.student_id }}" value="{{ student.module }}">
+                        <input type="hidden" name="class_type_{{ student.student_id }}" value="{{ student.class_type }}">
+                    </td>
+                    <td>
+                        <button class="add-button" type="submit" formaction="/update-scores" name="add_single" value="{{ student.student_id }}">Add</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div>
+            <button class="btn btn-danger" type="submit">Delete Selected</button>
+            <a class="btn btn-success" href="/score-analytics-ui">Run Analytics</a>
+        </div>
+    </form>
+
+    <!-- Student Scores Table -->
+    <h2>Student Scores</h2>
+    <p class="context">
+        This table stores students with their submitted marks. 
+        You can delete scores or download them as an Excel spreadsheet for offline analysis.
+    </p>
+
+    <form method="get" action="/students-dashboard">
+        <label for="score_university">University:</label>
+        <input type="text" id="score_university" name="score_university" value="{{ score_university }}">
+
+        <label for="score_module">Module:</label>
+        <input type="text" id="score_module" name="score_module" value="{{ score_module }}">
+
+        <label for="score_class_type">Class Type:</label>
+        <input type="text" id="score_class_type" name="score_class_type" value="{{ score_class_type }}">
+
+        <button class="btn" type="submit">Apply Filter</button>
+    </form>
+
+    <form method="post" action="/delete-scores">
+        <input type="hidden" name="university" value="{{ university }}">
+        <input type="hidden" name="module" value="{{ module }}">
+        <input type="hidden" name="class_type" value="{{ class_type }}">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Name</th>
+                    <th>Student ID</th>
+                    <th>University</th>
+                    <th>Module</th>
+                    <th>Class Type</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for score in scored_students %}
+                <tr>
+                    <td><input type="checkbox" name="delete_ids" value="{{ score.student_id }}"></td>
+                    <td>{{ score.name }}</td>
+                    <td>{{ score.student_id }}</td>
+                    <td>{{ score.university }}</td>
+                    <td>{{ score.module }}</td>
+                    <td>{{ score.class_type }}</td>
+                    <td>{{ score.mark }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div>
+            <button class="btn btn-danger" type="submit">Delete Selected</button>
+            <a class="btn btn-success" href="/download-scores-excel">⬇ Download Excel</a>
+        </div>
+    </form>
+
+</body>
+</html>

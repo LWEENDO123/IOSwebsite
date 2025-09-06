@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+itsdangerous
+python-jose
+passlib[bcrypt]
+python-multipart
+jinja2
+pandas
+openpyxl
+qrcode
+Pillow
