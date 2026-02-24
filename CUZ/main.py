@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 app = FastAPI()
 
@@ -25,4 +25,7 @@ async def serve_template(request: Request, template_name: str):
         template_name += ".html"
     return templates.TemplateResponse(template_name, {"request": request})
 
-
+# Heartbeat / health check endpoint
+@app.get("/heartbeat")
+async def heartbeat():
+    return JSONResponse(content={"status": "ok", "message": "Service is running"})
