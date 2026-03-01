@@ -3,9 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
-from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
-
-
+from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI()
 
@@ -13,7 +11,16 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Mount static folder (CSS, JS, images)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
-app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
+# --- Custom middleware to force HTTPS ---
+class ForceHTTPSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # Force scheme to https so url_for generates secure links
+        request.scope["scheme"] = "https"
+        response = await call_next(request)
+        return response
+
+app.add_middleware(ForceHTTPSMiddleware)
 
 # Point Jinja2 directly to CUZ (since templates are here)
 templates = Jinja2Templates(directory=BASE_DIR)
