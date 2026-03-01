@@ -18,6 +18,12 @@ templates = Jinja2Templates(directory=BASE_DIR)
 async def serve_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+# Explicit favicon route FIRST
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(BASE_DIR, "static", "favicon.ico"))
+
+# Generic template route AFTER
 @app.get("/{template_name}", response_class=HTMLResponse)
 async def serve_template(request: Request, template_name: str):
     if not template_name.endswith(".html"):
@@ -28,8 +34,3 @@ async def serve_template(request: Request, template_name: str):
 @app.get("/heartbeat")
 async def heartbeat():
     return JSONResponse(content={"status": "ok", "message": "Service is running"})
-
-# Explicit favicon route
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    return FileResponse(os.path.join(BASE_DIR, "static", "favicon.ico"))
