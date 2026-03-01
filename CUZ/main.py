@@ -3,6 +3,9 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from starlette.middleware.proxy_headers import ProxyHeadersMiddleware
+
+
 
 app = FastAPI()
 
@@ -10,6 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Mount static folder (CSS, JS, images)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # Point Jinja2 directly to CUZ (since templates are here)
 templates = Jinja2Templates(directory=BASE_DIR)
