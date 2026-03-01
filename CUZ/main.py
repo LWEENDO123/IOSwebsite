@@ -34,3 +34,14 @@ async def serve_template(request: Request, template_name: str):
 @app.get("/heartbeat")
 async def heartbeat():
     return JSONResponse(content={"status": "ok", "message": "Service is running"})
+
+# Debug route to list static files
+@app.get("/debug/static")
+async def list_static_files():
+    static_dir = os.path.join(BASE_DIR, "static")
+    file_list = []
+    for root, dirs, files in os.walk(static_dir):
+        for f in files:
+            rel_path = os.path.relpath(os.path.join(root, f), static_dir)
+            file_list.append(rel_path)
+    return {"static_files": file_list}
