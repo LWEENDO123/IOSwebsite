@@ -5,8 +5,143 @@
   <title>Boarding House Detail</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Inline CSS -->
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #fff;
+    }
+
+    .app-bar {
+      background: #66D4FF;
+      color: white;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .gallery {
+      position: relative;
+      height: 260px;
+      overflow: hidden;
+    }
+
+    .gallery-slider {
+      display: flex;
+      transition: transform 0.3s ease;
+    }
+
+    .slide {
+      min-width: 100%;
+      height: 260px;
+    }
+
+    .slide img,
+    .slide video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+    }
+
+    .page-indicator {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 12px;
+      transform: translateY(-50%);
+    }
+
+    .gallery-nav button {
+      background: rgba(0,0,0,0.5);
+      border: none;
+      color: white;
+      font-size: 20px;
+      padding: 6px 10px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .info {
+      padding: 16px;
+    }
+
+    .house-name {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 0 0 8px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .action-icon img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+    }
+
+    .card {
+      margin: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f9f9f9;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .legend {
+      margin: 16px;
+    }
+
+    .legend-badge.available { background: green; color: white; }
+    .legend-badge.unavailable { background: red; color: white; }
+    .legend-badge.not-supported { background: #555; color: white; }
+
+    .rooms {
+      padding: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .amenities {
+      padding: 16px;
+    }
+
+    .amenities ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .amenities li {
+      margin: 6px 0;
+      font-size: 13px;
+    }
+  </style>
 </head>
 <body>
   <header class="app-bar">
@@ -58,11 +193,6 @@
       <div class="legend-badge available">AVAILABLE</div>
       <div class="legend-badge unavailable">UNAVAILABLE</div>
       <div class="legend-badge not-supported">NOT SUPPORTED</div>
-    </div>
-    <div class="legend-definitions">
-      <div class="definition-card"><p><strong>Available</strong> — This room type currently has one or more spaces open.</p></div>
-      <div class="definition-card"><p><strong>Unavailable</strong> — This room type is currently full. No spaces are available right now.</p></div>
-      <div class="definition-card"><p><strong>Not supported</strong> — This boarding house does not offer the specified room type.</p></div>
     </div>
   </section>
 
