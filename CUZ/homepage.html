@@ -5,8 +5,57 @@
   <title>Kleno Boarding Houses</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
-  <!-- CSS -->
-  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Inline CSS -->
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #fff;
+    }
+
+    .brand-header {
+      background: #66D4FF;
+      color: white;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .filter {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #f0f0f0;
+    }
+
+    .filter.active {
+      background: #66D4FF;
+      color: white;
+    }
+
+    .title {
+      padding: 12px;
+    }
+
+    .house-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 20px;
+      font-weight: bold;
+    }
+  </style>
 
   <!-- JS as ES module -->
   <script type="module" src="/static/javascript/homepage.js"></script>
