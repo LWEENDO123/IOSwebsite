@@ -11,9 +11,22 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Configure logging
 logger = logging.getLogger("media_proxy")
 
-# Initialize S3 client (Railway provides credentials via env vars)
-s3_client = boto3.client("s3")
-RAILWAY_BUCKET = os.getenv("RAILWAY_BUCKET", "your-default-bucket")
+# Railway Object Storage env vars
+RAILWAY_BUCKET = os.getenv("RAILWAY_BUCKET")
+RAILWAY_ENDPOINT = os.getenv("RAILWAY_ENDPOINT")
+RAILWAY_ACCESS_KEY = os.getenv("RAILWAY_ACCESS_KEY")
+RAILWAY_SECRET_KEY = os.getenv("RAILWAY_SECRET_KEY")
+
+if not all([RAILWAY_BUCKET, RAILWAY_ENDPOINT, RAILWAY_ACCESS_KEY, RAILWAY_SECRET_KEY]):
+    raise RuntimeError("Missing Railway Object Storage environment variables")
+
+# Initialize S3 client with Railway credentials
+s3_client = boto3.client(
+    "s3",
+    endpoint_url=RAILWAY_ENDPOINT,
+    aws_access_key_id=RAILWAY_ACCESS_KEY,
+    aws_secret_access_key=RAILWAY_SECRET_KEY,
+)
 
 app = FastAPI()
 
