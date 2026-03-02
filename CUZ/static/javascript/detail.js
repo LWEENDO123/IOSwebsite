@@ -10,8 +10,8 @@ function normalizeMediaUrl(url) {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) {
     if (url.includes("/media/")) {
-      url = url.split("/media/", 1)[1];
-      return `/media/${url}`;
+      const parts = url.split("/media/");
+      return `/media/${parts[1]}`;
     }
   }
   return url.startsWith("/media/") ? url : `/media/${url}`;
@@ -44,7 +44,7 @@ function showSlide(index) {
 
 function createSlide(item) {
   const slide = document.createElement("div");
-  slide.className = "slide shimmer"; // start shimmer
+  slide.className = "slide shimmer"; // shimmer until loaded
   const mediaUrl = normalizeMediaUrl(item.url);
 
   if (item.type === "video") {
@@ -134,11 +134,12 @@ async function loadBoardingHouse(id, university, studentId) {
       if (nextBtn) nextBtn.addEventListener("click", () => showSlide(currentSlide + 1));
     }
 
+    // Auto cycle every 30s
     if (window._detailAutoCycleInterval) clearInterval(window._detailAutoCycleInterval);
     window._detailAutoCycleInterval = setInterval(() => {
       if (slides.length === 0) return;
       showSlide(currentSlide + 1);
-    }, 5000);
+    }, 30000);
 
     document.querySelector(".space-description").textContent = data.space_description || "";
     document.querySelector(".conditions").textContent = data.conditions || "";
@@ -168,7 +169,7 @@ async function loadBoardingHouse(id, university, studentId) {
       ];
       roomDefs.forEach(r => {
         const card = document.createElement("div");
-        card.className = "room-card shimmer"; // shimmer until image loads
+        card.className = "room-card shimmer";
         const badgeClass = (r.status?.toUpperCase() === 'AVAILABLE') ? 'available'
                          : (r.status?.toUpperCase() === 'UNAVAILABLE') ? 'unavailable'
                          : 'not-supported';
