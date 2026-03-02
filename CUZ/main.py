@@ -1,17 +1,21 @@
 import os
 import mimetypes
 import logging
+import boto3
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# Import your S3 client and bucket from CUZ core
-from CUZ.yearbook.profile.storage import s3_client, RAILWAY_BUCKET
+# Configure logging
+logger = logging.getLogger("media_proxy")
+
+# Initialize S3 client (Railway provides credentials via env vars)
+s3_client = boto3.client("s3")
+RAILWAY_BUCKET = os.getenv("RAILWAY_BUCKET", "your-default-bucket")
 
 app = FastAPI()
-logger = logging.getLogger("media_proxy")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -61,11 +65,6 @@ async def list_static_files():
 # --- Media proxy endpoint (S3) ---
 @app.get("/media/{file_path:path}")
 async def get_media_proxy(file_path: str, request: Request):
-    """
-    Proxy endpoint for serving media (images/videos) from S3.
-    Supports Range requests for efficient video streaming.
-    Normalizes Firestore-stored URLs into valid S3 keys.
-    """
     try:
         logger.debug(f"[MEDIA PROXY] Raw requested file_path={file_path}")
 
