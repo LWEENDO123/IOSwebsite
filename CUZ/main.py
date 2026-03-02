@@ -32,8 +32,12 @@ app = FastAPI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Mount static folder (CSS, JS, images)
+# Mount static folder (CSS, JS, favicon)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+
+# Mount assets folder (images + icons)
+app.mount("/assets", StaticFiles(directory=os.path.join(BASE_DIR, "assets")), name="assets")
+
 
 # --- Custom middleware to force HTTPS ---
 class ForceHTTPSMiddleware(BaseHTTPMiddleware):
