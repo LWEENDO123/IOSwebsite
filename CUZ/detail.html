@@ -6,283 +6,149 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
   <!-- Inline CSS -->
- <style>
-/* Global reset */
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  background: #fff;
-  color: #222;
-  -webkit-font-smoothing: antialiased;
-}
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background: #fff;
+      color: #222;
+      -webkit-font-smoothing: antialiased;
+    }
 
-/* ---------- App Bar ---------- */
-.app-bar {
-  background: #66D4FF;
-  color: white;
-  padding: 10px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 18px;
-}
+    .app-bar {
+      background: #66D4FF;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+    }
 
-/* ---------- Gallery ---------- */
-.gallery {
-  position: relative;
-  width: 100%;
-  height: 220px;
-  overflow: hidden;
-}
+    /* ---------- Gallery ---------- */
+    .gallery {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      overflow: hidden;
+    }
 
-.gallery-slider {
-  display: flex;
-  transition: transform 0.5s ease;
-}
+    .gallery-slider {
+      display: flex;
+      transition: transform 0.5s ease;
+      width: 100%;
+    }
 
-.gallery-slider img,
-.gallery-slider video {
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
-  border-radius: 10px;
-}
+    .gallery-slider > .slide {
+      flex: 0 0 100%; /* each slide is full width */
+    }
 
-.page-indicator {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.6);
-  color: white;
-  padding: 3px 6px;
-  border-radius: 10px;
-  font-size: 11px;
-}
+    .gallery-slider img,
+    .gallery-slider video {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      border-radius: 10px;
+    }
 
-.dots {
-  text-align: center;
-  margin-top: 4px;
-}
+    .page-indicator {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      padding: 3px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
 
-.dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin: 0 3px;
-  background: #ccc;
-  border-radius: 50%;
-}
+    .dots {
+      text-align: center;
+      margin-top: 4px;
+    }
 
-.dot.active {
-  background: #66D4FF;
-}
+    .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      margin: 0 3px;
+      background: #ccc;
+      border-radius: 50%;
+    }
 
-.gallery-nav {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 8px;
-  transform: translateY(-50%);
-}
+    .dot.active {
+      background: #66D4FF;
+    }
 
-.gallery-nav button {
-  background: rgba(0,0,0,0.5);
-  border: none;
-  color: white;
-  font-size: 18px;
-  padding: 5px 8px;
-  border-radius: 50%;
-  cursor: pointer;
-}
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 8px;
+      transform: translateY(-50%);
+    }
 
-/* ---------- Info Section ---------- */
-.info {
-  padding: 12px;
-}
+    .gallery-nav button {
+      background: rgba(0,0,0,0.5);
+      border: none;
+      color: white;
+      font-size: 18px;
+      padding: 5px 8px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
 
-.house-name {
-  font-size: 20px;
-  font-weight: bold;
-  margin: 0 0 6px;
-}
+    /* ---------- Info Section ---------- */
+    .info { padding: 12px; }
+    .house-name { font-size: 20px; font-weight: bold; margin: 0 0 6px; }
+    .location { display: flex; align-items: center; color: #555; font-size: 13px; }
 
-.location {
-  display: flex;
-  align-items: center;
-  color: #555;
-  font-size: 13px;
-}
+    .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+    .action-icon img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; box-shadow: 0 1px 3px rgba(0,0,0,0.2); cursor: pointer; }
 
-/* Action icons */
-.actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  margin-top: 6px;
-}
+    /* ---------- Cards ---------- */
+    .card { margin: 10px; padding: 10px; border-radius: 10px; background: #f9f9f9; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card h3 { margin-top: 0; font-size: 15px; font-weight: 600; }
 
-.action-icon img {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  cursor: pointer;
-}
+    /* ---------- Room Status Legend ---------- */
+    .legend { margin: 12px; }
+    .legend h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+    .legend-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .legend-badge { display: inline-block; padding: 3px 6px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #fff; }
+    .legend-badge.available { background: green; }
+    .legend-badge.unavailable { background: red; }
+    .legend-badge.not-supported { background: #555; }
 
-/* ---------- Cards ---------- */
-.card {
-  margin: 10px;
-  padding: 10px;
-  border-radius: 10px;
-  background: #f9f9f9;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
+    /* ---------- Room Types Grid ---------- */
+    .rooms { padding: 12px; }
+    .rooms h3 { margin-top: 0; font-size: 15px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
 
-.card h3 {
-  margin-top: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
+    .room-card { border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.2); background: #fff; display: flex; flex-direction: column; }
+    .room-card img { width: 100%; height: 120px; object-fit: cover; }
+    .room-info { padding: 8px; text-align: left; }
+    .room-header { display: flex; align-items: center; justify-content: space-between; }
+    .room-type { font-size: 13px; font-weight: bold; color: #333; }
+    .room-price { font-size: 12px; color: #666; margin-top: 4px; }
+    .room-card .badge { display: inline-block; padding: 3px 6px; border-radius: 10px; font-size: 11px; font-weight: 600; color: #fff; }
+    .room-card .badge.available { background: green; }
+    .room-card .badge.unavailable { background: red; }
+    .room-card .badge.not-supported { background: #555; }
 
-/* ---------- Room Status Legend ---------- */
-.legend {
-  margin: 12px;
-}
+    /* ---------- Amenities ---------- */
+    .amenities { padding: 12px; }
+    .amenities h3 { margin-top: 0; font-size: 15px; }
+    .amenities ul { list-style: none; padding: 0; }
+    .amenities li { margin: 4px 0; font-size: 12px; }
 
-.legend h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.legend-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.legend-badge {
-  display: inline-block;
-  padding: 3px 6px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.legend-badge.available { background: green; }
-.legend-badge.unavailable { background: red; }
-.legend-badge.not-supported { background: #555; }
-
-/* ---------- Room Types Grid ---------- */
-.rooms {
-  padding: 12px;
-}
-
-.rooms h3 {
-  margin-top: 0;
-  font-size: 15px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr; /* single column on mobile */
-  gap: 10px;
-}
-
-@media (min-width: 600px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr); /* two columns on larger screens */
-  }
-}
-
-.room-card {
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-}
-
-.room-card img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-}
-
-.room-info {
-  padding: 8px;
-  text-align: left;
-}
-
-.room-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.room-type {
-  font-size: 13px;
-  font-weight: bold;
-  color: #333;
-}
-
-.room-price {
-  font-size: 12px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.room-card .badge {
-  display: inline-block;
-  padding: 3px 6px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.room-card .badge.available { background: green; }
-.room-card .badge.unavailable { background: red; }
-.room-card .badge.not-supported { background: #555; }
-
-/* ---------- Amenities ---------- */
-.amenities {
-  padding: 12px;
-}
-
-.amenities h3 {
-  margin-top: 0;
-  font-size: 15px;
-}
-
-.amenities ul {
-  list-style: none;
-  padding: 0;
-}
-
-.amenities li {
-  margin: 4px 0;
-  font-size: 12px;
-}
-
-/* ---------- Responsive tweaks ---------- */
-@media (max-width: 480px) {
-  .house-name {
-    font-size: 18px;
-  }
-  .room-card img {
-    height: 100px;
-  }
-}
-</style>
-
-
+    @media (max-width: 480px) {
+      .house-name { font-size: 18px; }
+      .room-card img { height: 100px; }
+    }
+  </style>
 </head>
 <body>
   <header class="app-bar">
@@ -303,18 +169,10 @@ body {
     <h2 class="house-name"><!-- populated by JS --></h2>
     <div class="location"><!-- populated by JS --></div>
     <div class="actions">
-      <a href="#" class="action-icon phone">
-        <img src="/static/assets/icons/phone-call.png" alt="Call Landlord">
-      </a>
-      <a href="#" class="action-icon google">
-        <img src="/static/assets/icons/direction.png" alt="Google Maps">
-      </a>
-      <a href="#" class="action-icon yango">
-        <img src="/static/assets/icons/yango.png" alt="Yango Ride">
-      </a>
-      <a href="#" class="action-icon bus">
-        <img src="/static/assets/icons/bus.png" alt="Bus Stop">
-      </a>
+      <a href="#" class="action-icon phone"><img src="/static/assets/icons/phone-call.png" alt="Call Landlord"></a>
+      <a href="#" class="action-icon google"><img src="/static/assets/icons/direction.png" alt="Google Maps"></a>
+      <a href="#" class="action-icon yango"><img src="/static/assets/icons/yango.png" alt="Yango Ride"></a>
+      <a href="#" class="action-icon bus"><img src="/static/assets/icons/bus.png" alt="Bus Stop"></a>
     </div>
   </section>
 
@@ -345,9 +203,4 @@ body {
   <section class="amenities">
     <h3>AMENITIES</h3>
     <ul class="amenities-list"><!-- populated by JS --></ul>
-  </section>
-
-  <!-- JS -->
-  <script type="module" src="/static/javascript/detail.js"></script>
-</body>
-</html>
+  </
