@@ -5,7 +5,13 @@ import boto3
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse, Response
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    FileResponse,
+    StreamingResponse,
+    Response,
+)
 from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configure logging
@@ -79,6 +85,17 @@ async def list_static_files():
             file_list.append(rel_path)
     return {"static_files": file_list}
 
+@app.get("/debug/assets")
+async def list_assets():
+    assets_dir = os.path.join(BASE_DIR, "assets")
+    file_list = []
+    for root, dirs, files in os.walk(assets_dir):
+        for f in files:
+            rel_path = os.path.relpath(os.path.join(root, f), assets_dir)
+            file_list.append(rel_path)
+    return {"assets_files": file_list}
+
+
 # --- Media proxy endpoint (S3) ---
 @app.get("/media/{file_path:path}")
 async def get_media_proxy(file_path: str, request: Request):
@@ -129,18 +146,6 @@ async def get_media_proxy(file_path: str, request: Request):
         return StreamingResponse(obj["Body"], media_type=content_type, headers=base_headers)
 
     except s3_client.exceptions.NoSuchKey:
-@app.get("/debug/assets")
-async def list_assets():
-    assets_dir = os.path.join(BASE_DIR, "assets")
-    file_list = []
-    for root, dirs, files in os.walk(assets_dir):
-        for f in files:
-            rel_path = os.path.relpath(os.path.join(root, f), assets_dir)
-            file_list.append(rel_path)
-    return {"assets_files": file_list}
-
-
-        
         raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:
         logger.error(f"[MEDIA PROXY] Proxy streaming error for {file_path}: {e}", exc_info=True)
