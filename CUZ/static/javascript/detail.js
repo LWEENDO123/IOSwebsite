@@ -1,4 +1,5 @@
 import { authorizedGet } from "./tokenManager.js";
+console.log("DETAIL JS LOADED");
 
 const baseUrl = "https://klenoboardinghouse-production.up.railway.app";
 
