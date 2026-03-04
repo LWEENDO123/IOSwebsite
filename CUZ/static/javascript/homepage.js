@@ -20,10 +20,10 @@ function normalizeImageUrl(url) {
 // Helper: pick correct gender icon
 function getGenderIcon(gender) {
   const g = (gender || "").toLowerCase();
-  if (g === "male") return "/assets/icons/male.png";
-  if (g === "female") return "/assets/icons/female.png";
-  if (g === "mixed") return "/assets/icons/mixed.png";
-  return "/assets/icons/both.png";
+  if (g === "male") return "/staticassets/icons/male.png";
+  if (g === "female") return "static/assets/icons/female.png";
+  if (g === "mixed") return "static/assets/icons/mixed.png";
+  return "static/assets/icons/both.png";
 }
 
 async function fetchHouses(refresh = false) {
