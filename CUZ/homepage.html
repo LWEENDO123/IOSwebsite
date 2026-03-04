@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kleno Boarding Houses</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+  <!-- Inline CSS -->
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background: #fff;
+      color: #222;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .brand-header {
+      background: #66D4FF;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+      position: relative;
+    }
+
+    .menu {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    select {
+      margin-top: 8px;
+      padding: 6px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      justify-content: center;
+    }
+
+    .filter {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #f0f0f0;
+      font-size: 13px;
+    }
+
+    .filter.active {
+      background: #66D4FF;
+      color: white;
+    }
+
+    .title {
+      padding: 10px;
+      text-align: center;
+    }
+
+    .title h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .house-list {
+      display: grid;
+      grid-template-columns: 1fr; /* single column on mobile */
+      gap: 12px;
+      padding: 10px;
+    }
+
+    @media (min-width: 600px) {
+      .house-list {
+        grid-template-columns: repeat(2, 1fr); /* two columns on larger screens */
+      }
+    }
+
+    .house-card {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .house-card img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+    }
+
+    .house-card .info {
+      padding: 8px;
+      font-size: 13px;
+      background: rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .house-card .details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .house-card .details .house-name {
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .house-card .details .location {
+      font-size: 12px;
+      color: #555;
+      margin: 2px 0 0;
+    }
+
+    .gender-badge {
+      background: #fff;
+      border-radius: 50%;
+      padding: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .gender-badge img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 16px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+  </style>
+
+  <!-- JS as ES module -->
+  <script type="module" src="/static/javascript/homepage.js"></script>
+</head>
+<body>
+  <header class="brand-header">
+    <div class="menu">☰</div>
+    <h1>KLENO Boarding Houses</h1>
+    <select id="universitySelect">
+      <option value="">My University</option>
+      <option value="CUZM">Cavendish Main Campus</option>
+      <option value="CUZMED">Cavendish Medical Campus</option>
+      <option value="UNILUSM">UNILUS Main Campus</option>
+      <option value="CHRESO">Chreso University</option>
+      <option value="UNZAM">UNZA Main Campus</option>
+    </select>
+  </header>
+
+  <div class="filters">
+    <button class="filter active" data-filter="all">All</button>
+    <button class="filter" data-filter="new">New</button>
+  </div>
+
+  <div class="title">
+    <h2>Listings</h2>
+  </div>
+
+  <main id="houseList" class="house-list"><!-- populated by JS --></main>
+
+  <div id="loader" class="loader">Loading...</div>
+</body>
+</html>

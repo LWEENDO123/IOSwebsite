@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kleno Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script type="module" src="/static/javascript/login.js"></script>
+
+
+
+</head>
+<body>
+    <div class="container">
+        <h1 class="logo-text">KLENO</h1>
+        <h2>Login to your account</h2>
+
+        <form id="loginForm">
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <select id="university" required>
+                <option value="">Choose University</option>
+                <option value="CUZM">Cavendish Main Campus</option>
+                <option value="CUZMED">Cavendish Medical Campus</option>
+                <option value="UNILUSM">UNILUS Main Campus</option>
+                <option value="CHRESO">Chreso University</option>
+                <option value="UNZAM">UNZA Main Campus</option>
+            </select>
+            <button type="submit" id="loginBtn">Login</button>
+        </form>
+
+        <p id="message"></p>
+        <p>Don’t have an account? <a href="/signup.html">Sign Up</a></p>
+    </div>
+</body>
+</html>
