@@ -129,6 +129,18 @@ async def get_media_proxy(file_path: str, request: Request):
         return StreamingResponse(obj["Body"], media_type=content_type, headers=base_headers)
 
     except s3_client.exceptions.NoSuchKey:
+@app.get("/debug/assets")
+async def list_assets():
+    assets_dir = os.path.join(BASE_DIR, "assets")
+    file_list = []
+    for root, dirs, files in os.walk(assets_dir):
+        for f in files:
+            rel_path = os.path.relpath(os.path.join(root, f), assets_dir)
+            file_list.append(rel_path)
+    return {"assets_files": file_list}
+
+
+        
         raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:
         logger.error(f"[MEDIA PROXY] Proxy streaming error for {file_path}: {e}", exc_info=True)
