@@ -22,6 +22,7 @@
       text-align: center;
       font-weight: 600;
       font-size: 18px;
+      position: relative;
     }
 
     .menu {
@@ -111,6 +112,19 @@
       font-weight: bold;
       font-size: 14px;
     }
+
+    .gender-icons {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .gender-icons img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
   </style>
 
   <!-- JS as ES module -->
@@ -137,6 +151,14 @@
 
   <div class="title">
     <h2>Listings</h2>
+  </div>
+
+  <!-- Gender icons section -->
+  <div class="gender-icons">
+    <img src="/assets/icons/both.png" alt="Both genders">
+    <img src="/assets/icons/female.png" alt="Female">
+    <img src="/assets/icons/male.png" alt="Male">
+    <img src="/assets/icons/mixed.png" alt="Mixed">
   </div>
 
   <main id="houseList" class="house-list"><!-- populated by JS --></main>
