@@ -17,6 +17,15 @@ function normalizeImageUrl(url) {
   return `https://${url}`;
 }
 
+// Helper: pick correct gender icon
+function getGenderIcon(gender) {
+  const g = (gender || "").toLowerCase();
+  if (g === "male") return "/assets/icons/male.png";
+  if (g === "female") return "/assets/icons/female.png";
+  if (g === "mixed") return "/assets/icons/mixed.png";
+  return "/assets/icons/both.png";
+}
+
 async function fetchHouses(refresh = false) {
   if (isLoading || !hasMore) return;
   isLoading = true;
@@ -36,23 +45,13 @@ async function fetchHouses(refresh = false) {
 
   try {
     const res = await authorizedGet(url);
-    console.log("[DEBUG] Response status:", res.status);
-
     const data = await res.json();
-    console.log("[DEBUG] Response JSON:", data);
 
     if (res.ok) {
       const houses = data.data || [];
-      console.log("[DEBUG] Houses array length:", houses.length);
-
-      houses.forEach(h => {
-        console.log("[DEBUG] Rendering house:", h);
-        renderHouse(h);
-      });
-
+      houses.forEach(h => renderHouse(h));
       page++;
       hasMore = houses.length === limit;
-      console.log("[DEBUG] hasMore:", hasMore, "next page:", page);
     } else {
       console.error("[DEBUG] Failed response:", data);
     }
@@ -68,35 +67,23 @@ function renderHouse(house) {
   const card = document.createElement("div");
   card.className = "house-card";
 
-  // Gender badge
-  let genderIcon = "both.png";
-  if (house.gender) {
-    const g = house.gender.toLowerCase();
-    if (g === "male") genderIcon = "male.png";
-    else if (g === "female") genderIcon = "female.png";
-    else if (g === "mixed") genderIcon = "both.png";
-  }
-
-  // Normalize cover_image or image
-  const rawCover = house.cover_image || house.image;
-  const coverImage = normalizeImageUrl(rawCover);
+  const coverImage = normalizeImageUrl(house.cover_image || house.image);
+  const genderIcon = getGenderIcon(house.gender);
 
   card.innerHTML = `
     <img src="${coverImage}" alt="${house.name_boardinghouse}">
     <div class="info">
-      <div>
-        <h3>${house.name_boardinghouse}</h3>
-        <p>📍 ${house.location || ''}</p>
+      <div class="details">
+        <p class="house-name">${house.name_boardinghouse}</p>
+        <p class="location">📍 ${house.location || ''}</p>
       </div>
       <div class="gender-badge">
-        <img src="/static/assets/icons/${genderIcon}" alt="${house.gender || 'both'}">
+        <img src="${genderIcon}" alt="${house.gender || 'both'}">
       </div>
     </div>
   `;
 
   card.addEventListener("click", () => {
-    console.log("[DEBUG] Card clicked:", house.id);
-    // Always send a valid university: dropdown -> house.university -> currentUserUniversity
     const uniParam = selectedUniversity || house.university || currentUserUniversity || "";
     if (!uniParam) {
       alert("University not available. Please select your university.");
@@ -107,7 +94,6 @@ function renderHouse(house) {
   });
 
   document.getElementById("houseList").appendChild(card);
-  console.log("[DEBUG] Card appended for:", house.name_boardinghouse);
 }
 
 // Filter buttons
@@ -116,7 +102,6 @@ document.querySelectorAll(".filter").forEach(btn => {
     document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     selectedFilter = btn.dataset.filter;
-    console.log("[DEBUG] Filter selected:", selectedFilter);
     fetchHouses(true);
   });
 });
@@ -126,7 +111,6 @@ const uniSelect = document.getElementById("universitySelect");
 if (uniSelect) {
   uniSelect.addEventListener("change", e => {
     selectedUniversity = e.target.value;
-    console.log("[DEBUG] University selected:", selectedUniversity);
     fetchHouses(true);
   });
 }
@@ -134,7 +118,6 @@ if (uniSelect) {
 // Infinite scroll
 window.addEventListener("scroll", () => {
   if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-    console.log("[DEBUG] Triggering infinite scroll fetch");
     fetchHouses();
   }
 });
