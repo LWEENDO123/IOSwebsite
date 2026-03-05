@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 <meta charset="UTF-8">
 <title>Boarding House Detail</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
+
 body{
 margin:0;
 font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
@@ -16,17 +18,28 @@ color:#222;
 .app-bar{
 background:#66D4FF;
 color:white;
-padding:10px;
+padding:12px;
 text-align:center;
 font-weight:600;
 font-size:18px;
 }
 
+.container{
+padding:12px;
+}
+
 .actions{
 display:flex;
-gap:10px;
+gap:12px;
 justify-content:flex-end;
 margin-top:6px;
+}
+
+.action-icon{
+background:none;
+border:none;
+padding:0;
+cursor:pointer;
 }
 
 .action-icon img{
@@ -35,13 +48,13 @@ height:36px;
 border-radius:50%;
 object-fit:contain;
 box-shadow:0 1px 3px rgba(0,0,0,0.2);
-cursor:pointer;
 transition:transform 0.1s;
 }
 
 .action-icon img:active{
 transform:scale(0.9);
 }
+
 </style>
 </head>
 
@@ -51,63 +64,31 @@ transform:scale(0.9);
 <h1>Boarding House Detail</h1>
 </header>
 
-<section class="info">
+<section class="container">
 
 <div class="actions">
 
-<button id="phoneBtn" class="action-icon phone">
+<button id="phoneBtn" class="action-icon">
 <img src="/static/assets/icons/phone-call.png" alt="Call">
 </button>
 
-<button id="googleBtn" class="action-icon google">
-<img src="/static/assets/icons/direction.png" alt="Google">
+<button id="googleBtn" class="action-icon">
+<img src="/static/assets/icons/direction.png" alt="Google Maps">
 </button>
 
-<button id="yangoBtn" class="action-icon yango">
-<img src="/static/assets/icons/yango.png" alt="Yango">
+<button id="yangoBtn" class="action-icon">
+<img src="/static/assets/icons/yango.png" alt="Yango Ride">
 </button>
 
-<button id="busBtn" class="action-icon bus">
-<img src="/static/assets/icons/bus.png" alt="Bus">
+<button id="busBtn" class="action-icon">
+<img src="/static/assets/icons/bus.png" alt="Bus Stop">
 </button>
 
 </div>
 
 </section>
 
-<script type="module">
-
-console.log("📄 HTML PAGE LOADED");
-
-document.addEventListener("DOMContentLoaded",()=>{
-
-console.log("✅ DOM READY");
-
-const phoneBtn=document.getElementById("phoneBtn");
-const googleBtn=document.getElementById("googleBtn");
-const yangoBtn=document.getElementById("yangoBtn");
-
-console.log("🔍 Buttons detected:",{
-phoneBtn,
-googleBtn,
-yangoBtn
-});
-
-function debugClick(name){
-console.group(`🖱 CLICK EVENT: ${name}`);
-console.log("time:",new Date().toISOString());
-console.log("page:",window.location.href);
-console.groupEnd();
-}
-
-phoneBtn?.addEventListener("click",()=>debugClick("PHONE"));
-googleBtn?.addEventListener("click",()=>debugClick("GOOGLE"));
-yangoBtn?.addEventListener("click",()=>debugClick("YANGO"));
-
-});
-
-</script>
-
+<!-- Page controller (equivalent to Flutter page logic) -->
 <script type="module" src="/static/javascript/detail.js"></script>
 
 </body>
