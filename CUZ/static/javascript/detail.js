@@ -1,92 +1,96 @@
 import { authorizedGet } from "./tokenManager.js";
 
-console.log("🚀 DETAIL JS STARTED");
+console.log("🚀 DETAIL CONTROLLER STARTED");
 
-const baseUrl="https://klenoboardinghouse-production.up.railway.app";
+const BASE_URL = "https://klenoboardinghouse-production.up.railway.app";
 
-/* ============================
-PARAMETERS
-============================ */
+/* ===============================
+   PAGE PARAMETERS
+   (Equivalent to Flutter route args)
+================================ */
 
-const params=new URLSearchParams(window.location.search);
+const params = new URLSearchParams(window.location.search);
 
-const houseId=params.get("id");
-const university=params.get("university");
-const studentId=params.get("student_id");
+const houseId = params.get("id");
+const university = params.get("university");
+const studentId = params.get("student_id");
 
 console.group("📌 PAGE PARAMETERS");
-console.log("houseId:",houseId);
-console.log("university:",university);
-console.log("studentId:",studentId);
+console.log("houseId:", houseId);
+console.log("university:", university);
+console.log("studentId:", studentId);
 console.groupEnd();
 
-/* ============================
-HELPERS
-============================ */
+/* ===============================
+   VALIDATION
+================================ */
 
-function showError(msg){
-console.error("❌ ERROR:",msg);
-alert(msg);
-}
-
-function validateParams(){
+function validateParams() {
 
 console.group("🔎 PARAM VALIDATION");
 
-if(!houseId){
-console.error("Missing houseId");
+if (!houseId) {
+console.error("❌ Missing houseId");
 return false;
 }
 
-if(!university){
-console.error("Missing university");
+if (!university) {
+console.error("❌ Missing university");
 return false;
 }
 
-if(!studentId){
-console.error("Missing studentId");
+if (!studentId) {
+console.error("❌ Missing studentId");
 return false;
 }
 
-console.log("✅ Params OK");
-
+console.log("✅ Params valid");
 console.groupEnd();
 
 return true;
 }
 
-/* ============================
-LOCATION
-============================ */
+/* ===============================
+   ERROR HANDLER
+================================ */
 
-function getCurrentLocation(){
+function showError(message) {
+console.error("❌ ERROR:", message);
+alert(message || "Something went wrong");
+}
 
-console.log("📍 Getting location...");
+/* ===============================
+   LOCATION SERVICE
+   (Equivalent to Flutter Permission + Geolocator)
+================================ */
 
-return new Promise((resolve,reject)=>{
+function getCurrentLocation() {
 
-if(!navigator.geolocation){
-reject("Geolocation unsupported");
+console.log("📍 Requesting user location...");
+
+return new Promise((resolve, reject) => {
+
+if (!navigator.geolocation) {
+reject("Geolocation not supported");
 return;
 }
 
 navigator.geolocation.getCurrentPosition(
 
-(pos)=>{
+(pos) => {
 
-console.log("📍 LOCATION SUCCESS");
-console.log(pos.coords);
+console.log("📍 LOCATION RECEIVED:", pos.coords);
 
 resolve({
-lat:pos.coords.latitude,
-lon:pos.coords.longitude
+lat: pos.coords.latitude,
+lon: pos.coords.longitude
 });
 
 },
 
-(err)=>{
+(err) => {
 
-console.error("❌ LOCATION ERROR",err);
+console.error("❌ LOCATION ERROR:", err);
 reject(err.message);
 
 }
@@ -97,40 +101,41 @@ reject(err.message);
 
 }
 
-/* ============================
-REQUEST DEBUG
-============================ */
+/* ===============================
+   NETWORK DEBUGGER
+================================ */
 
-async function debugRequest(url){
+async function debugRequest(url) {
 
 console.group("🌍 NETWORK REQUEST");
-console.log("URL:",url);
+console.log("URL:", url);
 
-try{
+try {
 
-const res=await authorizedGet(url);
+const res = await authorizedGet(url);
 
-console.log("STATUS:",res.status);
+console.log("STATUS:", res.status);
 
-const text=await res.text();
+const raw = await res.text();
 
-console.log("RAW RESPONSE:",text);
+console.log("RAW RESPONSE:", raw);
 
-try{
-const data=JSON.parse(text);
-console.log("JSON:",data);
+let data = null;
+
+try {
+data = JSON.parse(raw);
+console.log("JSON:", data);
+} catch {
+console.warn("⚠ JSON parsing failed");
+}
+
 console.groupEnd();
+
 return data;
-}
-catch(e){
-console.error("❌ JSON parse failed");
-console.groupEnd();
-return null;
-}
 
-}catch(err){
+} catch (err) {
 
-console.error("❌ NETWORK ERROR",err);
+console.error("❌ NETWORK ERROR:", err);
 console.groupEnd();
 throw err;
 
@@ -138,69 +143,32 @@ throw err;
 
 }
 
-/* ============================
-PHONE
-============================ */
+/* ===============================
+   PHONE ACTION
+================================ */
 
-async function callLandlordPhone(){
+async function callLandlordPhone() {
 
-console.group("📞 PHONE CLICK");
+console.group("📞 PHONE BUTTON CLICKED");
 
-if(!validateParams()) return;
+if (!validateParams()) return;
 
-const url=
-`${baseUrl}/home/boardinghouse/${encodeURIComponent(houseId)}/landlord-phone`
-+`?university=${encodeURIComponent(university)}`
-+`&student_id=${encodeURIComponent(studentId)}`;
+const url =
+`${BASE_URL}/home/boardinghouse/${encodeURIComponent(houseId)}/landlord-phone`
++ `?university=${encodeURIComponent(university)}`
++ `&student_id=${encodeURIComponent(studentId)}`;
 
-const data=await debugRequest(url);
+const data = await debugRequest(url);
 
-if(data?.phone_number){
+if (data?.phone_number) {
 
-console.log("📞 Opening dialer:",data.phone_number);
+console.log("📞 Launching dialer:", data.phone_number);
 
-window.location.href=`tel:${data.phone_number}`;
+window.location.href = `tel:${data.phone_number}`;
 
-}else{
+} else {
 
-showError("Phone not available");
-
-}
-
-console.groupEnd();
-
-}
-
-/* ============================
-GOOGLE
-============================ */
-
-async function openGoogleMaps(){
-
-console.group("🗺 GOOGLE CLICK");
-
-if(!validateParams()) return;
-
-const {lat,lon}=await getCurrentLocation();
-
-const url=
-`${baseUrl}/home/google/${encodeURIComponent(houseId)}`
-+`?university=${encodeURIComponent(university)}`
-+`&student_id=${encodeURIComponent(studentId)}`
-+`&current_lat=${lat}`
-+`&current_lon=${lon}`;
-
-const data=await debugRequest(url);
-
-if(data?.link){
-
-console.log("🗺 OPEN MAP:",data.link);
-
-window.open(data.link,"_blank");
-
-}else{
-
-showError("Map link unavailable");
+showError("Phone number unavailable");
 
 }
 
@@ -208,42 +176,36 @@ console.groupEnd();
 
 }
 
-/* ============================
-YANGO
-============================ */
+/* ===============================
+   GOOGLE MAPS ACTION
+================================ */
 
-async function openYango(){
+async function openGoogleMaps() {
 
-console.group("🚗 YANGO CLICK");
+console.group("🗺 GOOGLE BUTTON CLICKED");
 
-if(!validateParams()) return;
+if (!validateParams()) return;
 
-const {lat,lon}=await getCurrentLocation();
+const { lat, lon } = await getCurrentLocation();
 
-const url=
-`${baseUrl}/home/yango/${encodeURIComponent(houseId)}`
-+`?university=${encodeURIComponent(university)}`
-+`&student_id=${encodeURIComponent(studentId)}`
-+`&current_lat=${lat}`
-+`&current_lon=${lon}`;
+const url =
+`${BASE_URL}/home/google/${encodeURIComponent(houseId)}`
++ `?university=${encodeURIComponent(university)}`
++ `&student_id=${encodeURIComponent(studentId)}`
++ `&current_lat=${lat}`
++ `&current_lon=${lon}`;
 
-const data=await debugRequest(url);
+const data = await debugRequest(url);
 
-if(data?.deep_link){
+if (data?.link) {
 
-console.log("🚗 Launch deep link");
+console.log("🗺 Opening map:", data.link);
 
-window.location.href=data.deep_link;
+window.open(data.link, "_blank");
 
-}else if(data?.browser_link){
+} else {
 
-console.log("🚗 Launch browser link");
-
-window.open(data.browser_link,"_blank");
-
-}else{
-
-showError("Yango unavailable");
+showError("Google map link unavailable");
 
 }
 
@@ -251,26 +213,73 @@ console.groupEnd();
 
 }
 
-/* ============================
-BIND BUTTONS
-============================ */
+/* ===============================
+   YANGO ACTION
+================================ */
 
-document.addEventListener("DOMContentLoaded",()=>{
+async function openYango() {
 
-console.log("🔗 Binding buttons");
+console.group("🚗 YANGO BUTTON CLICKED");
 
-const phoneBtn=document.getElementById("phoneBtn");
-const googleBtn=document.getElementById("googleBtn");
-const yangoBtn=document.getElementById("yangoBtn");
+if (!validateParams()) return;
 
-console.log("Buttons:",{
+const { lat, lon } = await getCurrentLocation();
+
+const url =
+`${BASE_URL}/home/yango/${encodeURIComponent(houseId)}`
++ `?university=${encodeURIComponent(university)}`
++ `&student_id=${encodeURIComponent(studentId)}`
++ `&current_lat=${lat}`
++ `&current_lon=${lon}`;
+
+const data = await debugRequest(url);
+
+if (data?.deep_link) {
+
+console.log("🚗 Opening Yango deep link");
+
+window.location.href = data.deep_link;
+
+}
+else if (data?.browser_link) {
+
+console.log("🚗 Opening Yango browser link");
+
+window.open(data.browser_link, "_blank");
+
+}
+else {
+
+showError("Yango ride unavailable");
+
+}
+
+console.groupEnd();
+
+}
+
+/* ===============================
+   PAGE INIT (Flutter initState)
+================================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+console.log("🚀 PAGE INITIALIZED");
+
+if (!validateParams()) return;
+
+const phoneBtn = document.getElementById("phoneBtn");
+const googleBtn = document.getElementById("googleBtn");
+const yangoBtn = document.getElementById("yangoBtn");
+
+console.log("🔘 Buttons detected:", {
 phoneBtn,
 googleBtn,
 yangoBtn
 });
 
-phoneBtn?.addEventListener("click",callLandlordPhone);
-googleBtn?.addEventListener("click",openGoogleMaps);
-yangoBtn?.addEventListener("click",openYango);
+phoneBtn?.addEventListener("click", callLandlordPhone);
+googleBtn?.addEventListener("click", openGoogleMaps);
+yangoBtn?.addEventListener("click", openYango);
 
 });
