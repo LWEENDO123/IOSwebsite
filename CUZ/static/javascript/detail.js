@@ -1,236 +1,276 @@
 import { authorizedGet } from "./tokenManager.js";
 
-console.log("✅ DETAIL JS LOADED");
+console.log("🚀 DETAIL JS STARTED");
 
-const baseUrl = "https://klenoboardinghouse-production.up.railway.app";
+const baseUrl="https://klenoboardinghouse-production.up.railway.app";
 
-const params = new URLSearchParams(window.location.search);
-const houseId = params.get("id");
-const university = params.get("university");
-const studentId = params.get("student_id");
+/* ============================
+PARAMETERS
+============================ */
 
-console.log("📌 Params:", { houseId, university, studentId });
+const params=new URLSearchParams(window.location.search);
 
-// ----------------------------
-// Utility Helpers
-// ----------------------------
+const houseId=params.get("id");
+const university=params.get("university");
+const studentId=params.get("student_id");
 
-function showError(message) {
-  console.error("❌ ERROR:", message);
-  alert(message || "Something went wrong");
+console.group("📌 PAGE PARAMETERS");
+console.log("houseId:",houseId);
+console.log("university:",university);
+console.log("studentId:",studentId);
+console.groupEnd();
+
+/* ============================
+HELPERS
+============================ */
+
+function showError(msg){
+console.error("❌ ERROR:",msg);
+alert(msg);
 }
 
-function validateParams() {
-  console.log("🔎 Validating params...");
-  debugger;
+function validateParams(){
 
-  if (!houseId || !university || !studentId) {
-    showError("Missing required parameters.");
-    return false;
-  }
+console.group("🔎 PARAM VALIDATION");
 
-  console.log("✅ Params valid");
-  return true;
+if(!houseId){
+console.error("Missing houseId");
+return false;
 }
 
-function getCurrentLocation() {
-  console.log("📍 Requesting location...");
-  debugger;
-
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject("Geolocation not supported");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        console.log("📍 Location received:", pos.coords);
-        resolve({
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-        });
-      },
-      (err) => {
-        console.error("❌ Location error:", err);
-        reject("Location permission denied");
-      }
-    );
-  });
+if(!university){
+console.error("Missing university");
+return false;
 }
 
-async function handleResponse(res) {
-  console.log("🌍 Response status:", res.status);
-  debugger;
-
-  if (!res.ok) {
-    try {
-      const err = await res.json();
-      throw new Error(err.detail || "Access denied (Premium required)");
-    } catch {
-      throw new Error("Access denied (Premium required)");
-    }
-  }
-
-  const data = await res.json();
-  console.log("📦 Response data:", data);
-  return data;
+if(!studentId){
+console.error("Missing studentId");
+return false;
 }
 
-// ----------------------------
-// Phone
-// ----------------------------
+console.log("✅ Params OK");
 
-async function callLandlordPhone() {
-  console.log("📞 PHONE CLICKED");
-  debugger;
+console.groupEnd();
 
-  if (!validateParams()) return;
-
-  try {
-    const url = `${baseUrl}/home/boardinghouse/${encodeURIComponent(
-      houseId
-    )}/landlord-phone?university=${encodeURIComponent(
-      university
-    )}&student_id=${encodeURIComponent(studentId)}`;
-
-    console.log("🌍 Sending request:", url);
-
-    const res = await authorizedGet(url);
-    const data = await handleResponse(res);
-
-    if (data.phone_number?.trim()) {
-      console.log("📞 Opening dialer...");
-      window.location.href = `tel:${data.phone_number}`;
-    } else {
-      showError(data.message || "Phone number not available");
-    }
-  } catch (err) {
-    console.error("Phone error:", err);
-    showError(err.message);
-  }
+return true;
 }
 
-// ----------------------------
-// Google Maps
-// ----------------------------
+/* ============================
+LOCATION
+============================ */
 
-async function openGoogleMaps() {
-  console.log("🗺 GOOGLE CLICKED");
-  debugger;
+function getCurrentLocation(){
 
-  if (!validateParams()) return;
+console.log("📍 Getting location...");
 
-  try {
-    const { lat, lon } = await getCurrentLocation();
+return new Promise((resolve,reject)=>{
 
-    const url = `${baseUrl}/home/google/${encodeURIComponent(
-      houseId
-    )}?university=${encodeURIComponent(
-      university
-    )}&student_id=${encodeURIComponent(
-      studentId
-    )}&current_lat=${lat}&current_lon=${lon}`;
-
-    console.log("🌍 Sending request:", url);
-
-    const res = await authorizedGet(url);
-    const data = await handleResponse(res);
-
-    if (data.link?.trim()) {
-      console.log("🗺 Opening Google Maps...");
-      window.open(data.link, "_blank");
-    } else {
-      showError("Google Maps link not available");
-    }
-  } catch (err) {
-    console.error("Google Maps error:", err);
-    showError(err.message);
-  }
+if(!navigator.geolocation){
+reject("Geolocation unsupported");
+return;
 }
 
-// ----------------------------
-// Yango
-// ----------------------------
+navigator.geolocation.getCurrentPosition(
 
-async function openYango() {
-  console.log("🚗 YANGO CLICKED");
-  debugger;
+(pos)=>{
 
-  if (!validateParams()) return;
+console.log("📍 LOCATION SUCCESS");
+console.log(pos.coords);
 
-  try {
-    const { lat, lon } = await getCurrentLocation();
+resolve({
+lat:pos.coords.latitude,
+lon:pos.coords.longitude
+});
 
-    const url = `${baseUrl}/home/yango/${encodeURIComponent(
-      houseId
-    )}?university=${encodeURIComponent(
-      university
-    )}&student_id=${encodeURIComponent(
-      studentId
-    )}&current_lat=${lat}&current_lon=${lon}&tariff=econom&lang=en&secure=false`;
+},
 
-    console.log("🌍 Sending request:", url);
+(err)=>{
 
-    const res = await authorizedGet(url);
-    const data = await handleResponse(res);
+console.error("❌ LOCATION ERROR",err);
+reject(err.message);
 
-    const deepLink = data.deep_link?.trim();
-    const browserLink = data.browser_link?.trim();
-
-    console.log("🚗 Yango links:", { deepLink, browserLink });
-
-    let launched = false;
-
-    if (deepLink) {
-      console.log("🚗 Trying deep link...");
-      window.location.href = deepLink;
-      launched = true;
-    }
-
-    if (!launched && browserLink) {
-      console.log("🚗 Fallback to browser link...");
-      window.open(browserLink, "_blank");
-    }
-
-    if (!deepLink && !browserLink) {
-      showError("Yango directions unavailable");
-    }
-  } catch (err) {
-    console.error("Yango error:", err);
-    showError(err.message);
-  }
 }
 
-// ----------------------------
-// Bind Actions
-// ----------------------------
+);
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 DOM READY");
-  debugger;
+});
 
-  const phoneBtn = document.querySelector(".action-icon.phone");
-  const googleBtn = document.querySelector(".action-icon.google");
-  const yangoBtn = document.querySelector(".action-icon.yango");
+}
 
-  console.log("🔘 Buttons found:", { phoneBtn, googleBtn, yangoBtn });
+/* ============================
+REQUEST DEBUG
+============================ */
 
-  if (phoneBtn) {
-    phoneBtn.addEventListener("click", callLandlordPhone);
-  } else {
-    console.warn("❌ Phone button not found");
-  }
+async function debugRequest(url){
 
-  if (googleBtn) {
-    googleBtn.addEventListener("click", openGoogleMaps);
-  } else {
-    console.warn("❌ Google button not found");
-  }
+console.group("🌍 NETWORK REQUEST");
+console.log("URL:",url);
 
-  if (yangoBtn) {
-    yangoBtn.addEventListener("click", openYango);
-  } else {
-    console.warn("❌ Yango button not found");
-  }
+try{
+
+const res=await authorizedGet(url);
+
+console.log("STATUS:",res.status);
+
+const text=await res.text();
+
+console.log("RAW RESPONSE:",text);
+
+try{
+const data=JSON.parse(text);
+console.log("JSON:",data);
+console.groupEnd();
+return data;
+}
+catch(e){
+console.error("❌ JSON parse failed");
+console.groupEnd();
+return null;
+}
+
+}catch(err){
+
+console.error("❌ NETWORK ERROR",err);
+console.groupEnd();
+throw err;
+
+}
+
+}
+
+/* ============================
+PHONE
+============================ */
+
+async function callLandlordPhone(){
+
+console.group("📞 PHONE CLICK");
+
+if(!validateParams()) return;
+
+const url=
+`${baseUrl}/home/boardinghouse/${encodeURIComponent(houseId)}/landlord-phone`
++`?university=${encodeURIComponent(university)}`
++`&student_id=${encodeURIComponent(studentId)}`;
+
+const data=await debugRequest(url);
+
+if(data?.phone_number){
+
+console.log("📞 Opening dialer:",data.phone_number);
+
+window.location.href=`tel:${data.phone_number}`;
+
+}else{
+
+showError("Phone not available");
+
+}
+
+console.groupEnd();
+
+}
+
+/* ============================
+GOOGLE
+============================ */
+
+async function openGoogleMaps(){
+
+console.group("🗺 GOOGLE CLICK");
+
+if(!validateParams()) return;
+
+const {lat,lon}=await getCurrentLocation();
+
+const url=
+`${baseUrl}/home/google/${encodeURIComponent(houseId)}`
++`?university=${encodeURIComponent(university)}`
++`&student_id=${encodeURIComponent(studentId)}`
++`&current_lat=${lat}`
++`&current_lon=${lon}`;
+
+const data=await debugRequest(url);
+
+if(data?.link){
+
+console.log("🗺 OPEN MAP:",data.link);
+
+window.open(data.link,"_blank");
+
+}else{
+
+showError("Map link unavailable");
+
+}
+
+console.groupEnd();
+
+}
+
+/* ============================
+YANGO
+============================ */
+
+async function openYango(){
+
+console.group("🚗 YANGO CLICK");
+
+if(!validateParams()) return;
+
+const {lat,lon}=await getCurrentLocation();
+
+const url=
+`${baseUrl}/home/yango/${encodeURIComponent(houseId)}`
++`?university=${encodeURIComponent(university)}`
++`&student_id=${encodeURIComponent(studentId)}`
++`&current_lat=${lat}`
++`&current_lon=${lon}`;
+
+const data=await debugRequest(url);
+
+if(data?.deep_link){
+
+console.log("🚗 Launch deep link");
+
+window.location.href=data.deep_link;
+
+}else if(data?.browser_link){
+
+console.log("🚗 Launch browser link");
+
+window.open(data.browser_link,"_blank");
+
+}else{
+
+showError("Yango unavailable");
+
+}
+
+console.groupEnd();
+
+}
+
+/* ============================
+BIND BUTTONS
+============================ */
+
+document.addEventListener("DOMContentLoaded",()=>{
+
+console.log("🔗 Binding buttons");
+
+const phoneBtn=document.getElementById("phoneBtn");
+const googleBtn=document.getElementById("googleBtn");
+const yangoBtn=document.getElementById("yangoBtn");
+
+console.log("Buttons:",{
+phoneBtn,
+googleBtn,
+yangoBtn
+});
+
+phoneBtn?.addEventListener("click",callLandlordPhone);
+googleBtn?.addEventListener("click",openGoogleMaps);
+yangoBtn?.addEventListener("click",openYango);
+
 });
