@@ -6,7 +6,6 @@ const BASE_URL = "https://klenoboardinghouse-production.up.railway.app";
 
 /* ===============================
    PAGE PARAMETERS
-   (Equivalent to Flutter route args)
 ================================ */
 
 const params = new URLSearchParams(window.location.search);
@@ -21,8 +20,9 @@ console.log("university:", university);
 console.log("studentId:", studentId);
 console.groupEnd();
 
+
 /* ===============================
-   VALIDATION
+   PARAM VALIDATION
 ================================ */
 
 function validateParams() {
@@ -31,16 +31,19 @@ console.group("🔎 PARAM VALIDATION");
 
 if (!houseId) {
 console.error("❌ Missing houseId");
+console.groupEnd();
 return false;
 }
 
 if (!university) {
 console.error("❌ Missing university");
+console.groupEnd();
 return false;
 }
 
 if (!studentId) {
 console.error("❌ Missing studentId");
+console.groupEnd();
 return false;
 }
 
@@ -50,49 +53,74 @@ console.groupEnd();
 return true;
 }
 
+
 /* ===============================
    ERROR HANDLER
 ================================ */
 
 function showError(message) {
-console.error("❌ ERROR:", message);
+
+console.group("❌ APPLICATION ERROR");
+
+console.error(message);
+
 alert(message || "Something went wrong");
+
+console.groupEnd();
+
 }
 
+
 /* ===============================
-   LOCATION SERVICE
-   (Equivalent to Flutter Permission + Geolocator)
+   GEOLOCATION SERVICE
 ================================ */
 
 function getCurrentLocation() {
 
-console.log("📍 Requesting user location...");
+console.group("📍 LOCATION REQUEST");
 
 return new Promise((resolve, reject) => {
 
 if (!navigator.geolocation) {
+
+console.error("❌ Geolocation not supported");
 reject("Geolocation not supported");
+console.groupEnd();
 return;
+
 }
 
 navigator.geolocation.getCurrentPosition(
 
 (pos) => {
 
-console.log("📍 LOCATION RECEIVED:", pos.coords);
-
-resolve({
+const location = {
 lat: pos.coords.latitude,
 lon: pos.coords.longitude
-});
+};
+
+console.log("📍 Location received:", location);
+
+console.groupEnd();
+
+resolve(location);
 
 },
 
 (err) => {
 
-console.error("❌ LOCATION ERROR:", err);
+console.error("❌ Location error:", err.message);
+
+console.groupEnd();
+
 reject(err.message);
 
+},
+
+{
+enableHighAccuracy: true,
+timeout: 10000,
+maximumAge: 0
 }
 
 );
@@ -101,6 +129,7 @@ reject(err.message);
 
 }
 
+
 /* ===============================
    NETWORK DEBUGGER
 ================================ */
@@ -108,25 +137,70 @@ reject(err.message);
 async function debugRequest(url) {
 
 console.group("🌍 NETWORK REQUEST");
-console.log("URL:", url);
+
+const start = performance.now();
+
+console.log("➡️ Request URL:", url);
 
 try {
 
 const res = await authorizedGet(url);
 
-console.log("STATUS:", res.status);
+const end = performance.now();
+
+console.log("⏱ Request Time:", (end - start).toFixed(2) + " ms");
+
+console.log("📡 Status:", res.status);
+console.log("📡 Status Text:", res.statusText);
+
+/* ---------- RESPONSE HEADERS ---------- */
+
+console.group("📥 Response Headers");
+
+for (const [key, value] of res.headers.entries()) {
+console.log(`${key}: ${value}`);
+}
+
+console.groupEnd();
+
+/* ---------- RAW RESPONSE ---------- */
 
 const raw = await res.text();
 
-console.log("RAW RESPONSE:", raw);
+console.log("📦 Response Length:", raw.length);
+
+/* Empty response detection */
+
+if (!raw || raw.trim() === "") {
+
+console.error("❌ EMPTY RESPONSE BODY");
+
+console.groupEnd();
+
+return null;
+
+}
+
+console.log("📦 Raw Response:", raw);
+
+/* ---------- JSON PARSING ---------- */
 
 let data = null;
 
 try {
+
 data = JSON.parse(raw);
-console.log("JSON:", data);
-} catch {
-console.warn("⚠ JSON parsing failed");
+
+console.log("✅ JSON Parsed Successfully");
+
+console.log("📄 JSON Object:", data);
+
+} catch (parseError) {
+
+console.error("❌ JSON Parsing Failed");
+
+console.error(parseError);
+
 }
 
 console.groupEnd();
@@ -135,13 +209,18 @@ return data;
 
 } catch (err) {
 
-console.error("❌ NETWORK ERROR:", err);
+console.error("❌ Network Request Failed");
+
+console.error(err);
+
 console.groupEnd();
+
 throw err;
 
 }
 
 }
+
 
 /* ===============================
    PHONE ACTION
@@ -152,6 +231,8 @@ async function callLandlordPhone() {
 console.group("📞 PHONE BUTTON CLICKED");
 
 if (!validateParams()) return;
+
+try {
 
 const url =
 `${BASE_URL}/home/boardinghouse/${encodeURIComponent(houseId)}/landlord-phone`
@@ -172,9 +253,16 @@ showError("Phone number unavailable");
 
 }
 
+} catch (err) {
+
+showError("Failed to fetch phone number");
+
+}
+
 console.groupEnd();
 
 }
+
 
 /* ===============================
    GOOGLE MAPS ACTION
@@ -182,9 +270,11 @@ console.groupEnd();
 
 async function openGoogleMaps() {
 
-console.group("🗺 GOOGLE BUTTON CLICKED");
+console.group("🗺 GOOGLE MAPS BUTTON");
 
 if (!validateParams()) return;
+
+try {
 
 const { lat, lon } = await getCurrentLocation();
 
@@ -199,13 +289,19 @@ const data = await debugRequest(url);
 
 if (data?.link) {
 
-console.log("🗺 Opening map:", data.link);
+console.log("🗺 Opening Google Maps:", data.link);
 
 window.open(data.link, "_blank");
 
 } else {
 
-showError("Google map link unavailable");
+showError("Google Maps link unavailable");
+
+}
+
+} catch (err) {
+
+showError("Failed to open Google Maps");
 
 }
 
@@ -213,15 +309,18 @@ console.groupEnd();
 
 }
 
+
 /* ===============================
    YANGO ACTION
 ================================ */
 
 async function openYango() {
 
-console.group("🚗 YANGO BUTTON CLICKED");
+console.group("🚗 YANGO BUTTON");
 
 if (!validateParams()) return;
+
+try {
 
 const { lat, lon } = await getCurrentLocation();
 
@@ -254,19 +353,34 @@ showError("Yango ride unavailable");
 
 }
 
+} catch (err) {
+
+showError("Failed to launch Yango");
+
+}
+
 console.groupEnd();
 
 }
 
+
 /* ===============================
-   PAGE INIT (Flutter initState)
+   PAGE INITIALIZATION
 ================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
 
-console.log("🚀 PAGE INITIALIZED");
+console.group("🚀 PAGE INITIALIZATION");
 
-if (!validateParams()) return;
+if (!validateParams()) {
+
+console.warn("⚠ Page initialization stopped due to invalid parameters");
+
+console.groupEnd();
+
+return;
+
+}
 
 const phoneBtn = document.getElementById("phoneBtn");
 const googleBtn = document.getElementById("googleBtn");
@@ -281,5 +395,7 @@ yangoBtn
 phoneBtn?.addEventListener("click", callLandlordPhone);
 googleBtn?.addEventListener("click", openGoogleMaps);
 yangoBtn?.addEventListener("click", openYango);
+
+console.groupEnd();
 
 });
