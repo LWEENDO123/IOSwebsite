@@ -2,252 +2,268 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
   <title>Boarding House Detail</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-      background: #fff;
-      color: #222;
+    :root{
+      --accent:#66D4FF;
+      --text:#222;
+      --muted:#666;
+      --card-bg:#fff;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius:10px;
     }
 
-    .app-bar {
-      background: #66D4FF;
-      color: white;
-      padding: 12px;
-      text-align: center;
-      font-weight: 600;
-      font-size: 18px;
-    }
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:var(--text);background:#fff}
+    .app-bar{background:var(--accent);color:#fff;padding:12px 14px;text-align:center;font-weight:700;font-size:18px}
+    .container{padding:12px;max-width:900px;margin:0 auto}
 
-    .container {
-      padding: 12px;
-    }
-
-    .actions {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      margin-top: 6px;
-    }
-
-    .action-icon {
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      position: relative;
-    }
-
-    .action-icon img {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      object-fit: contain;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-      transition: transform 0.1s;
-    }
-
-    .action-icon img:active {
-      transform: scale(0.9);
-    }
-
-    /* Gallery */
+    /* Gallery (book-like) */
     .gallery {
       position: relative;
+      margin-top: 12px;
+      border-radius: var(--radius);
       overflow: hidden;
-      margin-top: 16px;
+      background: linear-gradient(180deg,#f7f9fb,#fff);
+      box-shadow: var(--shadow);
     }
 
     .gallery-slider {
-      display: flex;
-      transition: transform 0.3s ease-in-out;
+      display:flex;
+      transition:transform .35s ease;
+      will-change: transform;
     }
 
     .slide {
-      min-width: 100%;
-      height: 260px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f0f0f0;
+      min-width:100%;
+      height:260px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f0f0f0;
+      position:relative;
+      overflow:hidden;
     }
 
-    .gallery-nav {
-      position: absolute;
-      top: 50%;
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      transform: translateY(-50%);
+    .slide img, .slide video {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
     }
 
-    .gallery-nav button {
-      background: rgba(0, 0, 0, 0.5);
-      color: white;
-      border: none;
-      padding: 6px 10px;
-      cursor: pointer;
+    /* "Book" effect: subtle page shadow on left/right */
+    .gallery::before,
+    .gallery::after{
+      content:"";
+      position:absolute;
+      top:0;
+      bottom:0;
+      width:18px;
+      pointer-events:none;
+    }
+    .gallery::before{left:0;background:linear-gradient(90deg, rgba(0,0,0,0.06), transparent)}
+    .gallery::after{right:0;background:linear-gradient(270deg, rgba(0,0,0,0.06), transparent)}
+
+    /* Page indicator & dots */
+    .page-indicator{padding:8px 0;text-align:center;color:var(--muted);font-size:13px}
+    .dots{display:flex;gap:6px;justify-content:center;padding-bottom:8px}
+    .dot{width:8px;height:8px;border-radius:50%;background:#ddd;cursor:pointer}
+    .dot.active{background:#333}
+
+    /* Action icons row (moved below gallery) */
+    .actions {
+      display:flex;
+      gap:10px;
+      justify-content:flex-start;
+      align-items:center;
+      margin:10px 0 6px 0;
+      padding:6px 0;
     }
 
-    .dots {
-      text-align: center;
-      margin-top: 8px;
+    .action-icon{
+      background:transparent;
+      border:none;
+      padding:0;
+      margin:0;
+      width:44px;
+      height:44px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      cursor:pointer;
+      position:relative;
+      box-shadow:var(--shadow);
+      background:#fff;
     }
 
-    .dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      margin: 0 4px;
-      background: #ccc;
-      border-radius: 50%;
-      cursor: pointer;
+    /* smaller icons for mobile */
+    @media (max-width:420px){
+      .action-icon{width:40px;height:40px}
+      .slide{height:220px}
     }
 
-    .dot.active {
-      background: #333;
+    .action-icon img{
+      width:26px;height:26px;object-fit:contain;border-radius:50%;
+      transition:transform .12s ease,opacity .12s ease;
     }
 
-    .page-indicator {
-      text-align: center;
-      margin-top: 4px;
-      font-size: 14px;
-      color: #666;
-    }
+    .action-icon.loading img{opacity:.45;transform:scale(.95)}
 
     /* Room cards */
-    .rooms .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 12px;
-      margin-top: 16px;
+    .meta {
+      margin-top:8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
     }
 
-    .room-card {
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    .house-name{font-size:18px;font-weight:800;margin:6px 0 0 0}
+    .location{color:var(--muted);font-size:13px;margin:0}
+
+    .card{
+      background:var(--card-bg);
+      border-radius:12px;
+      padding:12px;
+      margin-top:12px;
+      box-shadow:var(--shadow);
     }
 
-    .room-card img {
-      width: 100%;
-      height: 120px;
-      object-fit: cover;
+    .space-description,.conditions{font-size:14px;color:#111;line-height:1.4}
+
+    .legend{display:flex;gap:8px;margin-top:10px;align-items:center}
+    .legend .badge{padding:6px 10px;border-radius:18px;color:#fff;font-weight:700;font-size:12px}
+    .legend .available{background:green}
+    .legend .unavailable{background:red}
+    .legend .not-supported{background:#666}
+
+    .rooms .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+      gap:10px;
+      margin-top:12px;
     }
 
-    .room-info {
-      padding: 8px;
+    .room-card{
+      border-radius:10px;
+      overflow:hidden;
+      background:#fff;
+      border:1px solid #eee;
+      display:flex;
+      flex-direction:column;
+      min-height:170px;
+      box-shadow:0 1px 2px rgba(0,0,0,0.04);
     }
 
-    .room-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .room-card .thumb{height:110px;background:#f3f3f3}
+    .room-card .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 
-    .badge {
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: bold;
-      color: #fff;
-    }
+    .room-info{padding:8px;flex:1;display:flex;flex-direction:column;justify-content:space-between}
+    .room-header{display:flex;justify-content:space-between;align-items:center}
+    .room-type{font-size:13px;font-weight:700;margin:0}
+    .room-price{font-size:13px;color:var(--muted);margin:6px 0 0 0}
 
-    .badge.available {
-      background: green;
+    .badge-small{
+      padding:4px 8px;border-radius:12px;color:#fff;font-weight:700;font-size:12px;
     }
-
-    .badge.unavailable {
-      background: red;
-    }
-
-    .badge.not-supported {
-      background: gray;
-    }
+    .badge-small.available{background:green}
+    .badge-small.unavailable{background:red}
+    .badge-small.not-supported{background:#666}
 
     /* Amenities */
-    .amenities-list {
-      margin-top: 16px;
-      padding-left: 20px;
-    }
+    .amenities-list{margin:8px 0 0 16px;padding:0}
+    .amenities-list li{margin-bottom:6px;font-size:14px;color:#333}
 
-    .amenities-list li {
-      margin-bottom: 4px;
-    }
+    /* small helper shimmer */
+    .shimmer{background:linear-gradient(90deg,#f0f0f0 0%,#e9e9e9 50%,#f0f0f0 100%);background-size:200% 100%;animation:shimmer 1.2s linear infinite}
+    @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
   </style>
 </head>
 
 <body>
+  <header class="app-bar">Boarding House Detail</header>
 
-  <header class="app-bar">
-    <h1>Boarding House Detail</h1>
-  </header>
+  <main class="container">
 
-  <section class="container">
+    <!-- Gallery (book-like) -->
+    <div class="gallery card" aria-hidden="false">
+      <div class="gallery-slider" role="list"></div>
 
-    <!-- Action buttons -->
-    <div class="actions">
-      <button id="phoneBtn" class="action-icon">
+      <!-- nav arrows (visually hidden on small screens but available) -->
+      <div class="gallery-nav" aria-hidden="true" style="pointer-events:none">
+        <button class="prev" style="display:none">◀</button>
+        <button class="next" style="display:none">▶</button>
+      </div>
+
+      <div class="page-indicator" aria-live="polite"></div>
+      <div class="dots" role="tablist" aria-label="Gallery pages"></div>
+    </div>
+
+    <!-- action icons (moved below gallery for mobile-first layout) -->
+    <div class="actions" role="toolbar" aria-label="Actions">
+      <button id="phoneBtn" class="action-icon" title="Call landlord" aria-label="Call landlord">
         <img src="/static/assets/icons/phone-call.png" alt="Call">
       </button>
-      <button id="googleBtn" class="action-icon">
+
+      <button id="googleBtn" class="action-icon" title="Open in Google Maps" aria-label="Open Google Maps">
         <img src="/static/assets/icons/direction.png" alt="Google Maps">
       </button>
-      <button id="yangoBtn" class="action-icon">
-        <img src="/static/assets/icons/yango.png" alt="Yango Ride">
+
+      <button id="yangoBtn" class="action-icon" title="Open Yango" aria-label="Open Yango">
+        <img src="/static/assets/icons/yango.png" alt="Yango">
       </button>
-      <button id="busBtn" class="action-icon">
-        <img src="/static/assets/icons/bus.png" alt="Bus Stop">
+
+      <button id="busBtn" class="action-icon" title="Nearby bus" aria-label="Bus stop">
+        <img src="/static/assets/icons/bus.png" alt="Bus">
       </button>
     </div>
 
-    <!-- Gallery -->
-    <div class="gallery">
-      <div class="gallery-slider"></div>
-      <div class="gallery-nav">
-        <button class="prev">◀</button>
-        <button class="next">▶</button>
+    <!-- meta -->
+    <div class="meta">
+      <h2 class="house-name"></h2>
+      <p class="location"></p>
+    </div>
+
+    <!-- space description -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px">
+        <strong style="font-size:15px">Space Overview</strong>
       </div>
-      <div class="dots"></div>
-      <div class="page-indicator"></div>
+      <div class="space-description" style="margin-top:8px;color:#333"> </div>
     </div>
 
-    <!-- House name & location -->
-    <h2 class="house-name"></h2>
-    <p class="location"></p>
+    <!-- conditions -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px">
+        <strong style="font-size:15px">Conditions</strong>
+      </div>
+      <div class="conditions" style="margin-top:8px;color:#333"> </div>
+    </div>
 
-    <!-- Space description -->
-    <div class="space-description"></div>
-
-    <!-- Conditions -->
-    <div class="conditions"></div>
-
-    <!-- Room status legend -->
+    <!-- legend -->
     <div class="legend">
       <span class="badge available">AVAILABLE</span>
       <span class="badge unavailable">UNAVAILABLE</span>
       <span class="badge not-supported">NOT SUPPORTED</span>
     </div>
 
-    <!-- Rooms grid -->
-    <div class="rooms">
+    <!-- rooms -->
+    <section class="rooms">
       <div class="grid"></div>
-    </div>
+    </section>
 
-    <!-- Amenities -->
-    <h3>Amenities</h3>
-    <ul class="amenities-list"></ul>
+    <!-- amenities -->
+    <section style="margin-top:12px">
+      <h3 style="margin:6px 0 6px 0">Amenities</h3>
+      <ul class="amenities-list"></ul>
+    </section>
 
-  </section>
+  </main>
 
-  <!-- Page controller -->
   <script type="module" src="/static/javascript/detail.js"></script>
-
 </body>
+
 </html>
