@@ -2,94 +2,252 @@
 <html lang="en">
 
 <head>
-<meta charset="UTF-8">
-<title>Boarding House Detail</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Boarding House Detail</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<style>
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background: #fff;
+      color: #222;
+    }
 
-body{
-margin:0;
-font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
-background:#fff;
-color:#222;
-}
+    .app-bar {
+      background: #66D4FF;
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+    }
 
-.app-bar{
-background:#66D4FF;
-color:white;
-padding:12px;
-text-align:center;
-font-weight:600;
-font-size:18px;
-}
+    .container {
+      padding: 12px;
+    }
 
-.container{
-padding:12px;
-}
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 6px;
+    }
 
-.actions{
-display:flex;
-gap:12px;
-justify-content:flex-end;
-margin-top:6px;
-}
+    .action-icon {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      position: relative;
+    }
 
-.action-icon{
-background:none;
-border:none;
-padding:0;
-cursor:pointer;
-}
+    .action-icon img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: contain;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      transition: transform 0.1s;
+    }
 
-.action-icon img{
-width:36px;
-height:36px;
-border-radius:50%;
-object-fit:contain;
-box-shadow:0 1px 3px rgba(0,0,0,0.2);
-transition:transform 0.1s;
-}
+    .action-icon img:active {
+      transform: scale(0.9);
+    }
 
-.action-icon img:active{
-transform:scale(0.9);
-}
+    /* Gallery */
+    .gallery {
+      position: relative;
+      overflow: hidden;
+      margin-top: 16px;
+    }
 
-</style>
+    .gallery-slider {
+      display: flex;
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .slide {
+      min-width: 100%;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f0f0f0;
+    }
+
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      transform: translateY(-50%);
+    }
+
+    .gallery-nav button {
+      background: rgba(0, 0, 0, 0.5);
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .dots {
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin: 0 4px;
+      background: #ccc;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .dot.active {
+      background: #333;
+    }
+
+    .page-indicator {
+      text-align: center;
+      margin-top: 4px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    /* Room cards */
+    .rooms .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .room-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .room-card img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+    }
+
+    .room-info {
+      padding: 8px;
+    }
+
+    .room-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .badge.available {
+      background: green;
+    }
+
+    .badge.unavailable {
+      background: red;
+    }
+
+    .badge.not-supported {
+      background: gray;
+    }
+
+    /* Amenities */
+    .amenities-list {
+      margin-top: 16px;
+      padding-left: 20px;
+    }
+
+    .amenities-list li {
+      margin-bottom: 4px;
+    }
+  </style>
 </head>
 
 <body>
 
-<header class="app-bar">
-<h1>Boarding House Detail</h1>
-</header>
+  <header class="app-bar">
+    <h1>Boarding House Detail</h1>
+  </header>
 
-<section class="container">
+  <section class="container">
 
-<div class="actions">
+    <!-- Action buttons -->
+    <div class="actions">
+      <button id="phoneBtn" class="action-icon">
+        <img src="/static/assets/icons/phone-call.png" alt="Call">
+      </button>
+      <button id="googleBtn" class="action-icon">
+        <img src="/static/assets/icons/direction.png" alt="Google Maps">
+      </button>
+      <button id="yangoBtn" class="action-icon">
+        <img src="/static/assets/icons/yango.png" alt="Yango Ride">
+      </button>
+      <button id="busBtn" class="action-icon">
+        <img src="/static/assets/icons/bus.png" alt="Bus Stop">
+      </button>
+    </div>
 
-<button id="phoneBtn" class="action-icon">
-<img src="/static/assets/icons/phone-call.png" alt="Call">
-</button>
+    <!-- Gallery -->
+    <div class="gallery">
+      <div class="gallery-slider"></div>
+      <div class="gallery-nav">
+        <button class="prev">◀</button>
+        <button class="next">▶</button>
+      </div>
+      <div class="dots"></div>
+      <div class="page-indicator"></div>
+    </div>
 
-<button id="googleBtn" class="action-icon">
-<img src="/static/assets/icons/direction.png" alt="Google Maps">
-</button>
+    <!-- House name & location -->
+    <h2 class="house-name"></h2>
+    <p class="location"></p>
 
-<button id="yangoBtn" class="action-icon">
-<img src="/static/assets/icons/yango.png" alt="Yango Ride">
-</button>
+    <!-- Space description -->
+    <div class="space-description"></div>
 
-<button id="busBtn" class="action-icon">
-<img src="/static/assets/icons/bus.png" alt="Bus Stop">
-</button>
+    <!-- Conditions -->
+    <div class="conditions"></div>
 
-</div>
+    <!-- Room status legend -->
+    <div class="legend">
+      <span class="badge available">AVAILABLE</span>
+      <span class="badge unavailable">UNAVAILABLE</span>
+      <span class="badge not-supported">NOT SUPPORTED</span>
+    </div>
 
-</section>
+    <!-- Rooms grid -->
+    <div class="rooms">
+      <div class="grid"></div>
+    </div>
 
-<!-- Page controller (equivalent to Flutter page logic) -->
-<script type="module" src="/static/javascript/detail.js"></script>
+    <!-- Amenities -->
+    <h3>Amenities</h3>
+    <ul class="amenities-list"></ul>
+
+  </section>
+
+  <!-- Page controller -->
+  <script type="module" src="/static/javascript/detail.js"></script>
 
 </body>
 </html>
