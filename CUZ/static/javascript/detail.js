@@ -89,6 +89,8 @@ function setButtonLoading(btn, isLoading) {
     .action-icon.loading { opacity: 0.9; }
     .shimmer { background: linear-gradient(90deg, #f0f0f0 0%, #e8e8e8 50%, #f0f0f0 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
     @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+    .room-card.status-available { border-color: #1e9b3a !important; box-shadow: 0 6px 18px rgba(30,155,58,0.12) !important; }
+    .room-card.status-unavailable { border-color: #d32f2f !important; box-shadow: 0 6px 18px rgba(211,47,47,0.12) !important; opacity: 0.95; }
   `;
   document.head.appendChild(style);
 })();
@@ -244,6 +246,35 @@ function createSlide(item) {
 }
 
 /* ===============================
+   ROOM STATUS HELPERS
+   - Map backend status strings to normalized tokens
+   - Update legend descriptor text and card visuals
+================================ */
+
+function normalizeStatus(raw) {
+  if (!raw && raw !== "") return null;
+  const s = String(raw || "").trim().toLowerCase();
+  if (!s) return null;
+  if (["available", "vacant", "open"].includes(s)) return "available";
+  if (["unavailable", "full", "occupied"].includes(s)) return "unavailable";
+  if (["not supported", "not_supported", "n/a", "na"].includes(s)) return "not-supported";
+  return s; // unknown token, treat as not-supported visually
+}
+
+function applyRoomCardVisual(cardEl, statusToken) {
+  // remove previous status classes
+  cardEl.classList.remove("status-available", "status-unavailable", "status-not-supported");
+  // apply new
+  if (statusToken === "available") {
+    cardEl.classList.add("status-available");
+  } else if (statusToken === "unavailable") {
+    cardEl.classList.add("status-unavailable");
+  } else {
+    cardEl.classList.add("status-not-supported");
+  }
+}
+
+/* ===============================
    ACTIONS: Phone, Google, Yango, Bus
 ================================ */
 
@@ -283,21 +314,59 @@ async function openGoogleMaps(id, uniToSend, studentId, btn, fallbackLocation) {
   console.group("🗺 GOOGLE MAPS BUTTON");
   setButtonLoading(btn, true);
   try {
-    const loc = await (async () => {
-      if (fallbackLocation && fallbackLocation.lat && fallbackLocation.lon) return { lat: fallbackLocation.lat, lon: fallbackLocation.lon };
-      return await getCurrentLocation();
-    })();
+    // get current location for origin (gfrom)
+    let current = null;
+    try {
+      current = await getCurrentLocation();
+    } catch (err) {
+      console.warn("Could not get current location for Google Maps:", err);
+      current = null;
+    }
 
-    const googleUrl = `${BASE_URL}/home/google/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}&current_lat=${encodeURIComponent(loc.lat)}&current_lon=${encodeURIComponent(loc.lon)}`;
+    // request backend google endpoint (it may return a ready link)
+    const googleUrl = `${BASE_URL}/home/google/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}${current ? `&current_lat=${encodeURIComponent(current.lat)}&current_lon=${encodeURIComponent(current.lon)}` : ''}`;
     const gdata = await debugRequest(googleUrl);
     if (!gdata) { alert("Google Maps link unavailable"); return; }
 
-    const link = gdata.link ?? gdata.url ?? gdata.maps_link ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallbackLocation?.text || "")}`;
+    // prefer backend link if it contains both origin and destination
+    const link = gdata.link ?? gdata.url ?? gdata.maps_link ?? null;
+
     if (link) {
-      try { window.open(link, "_blank"); } catch (err) { window.location.href = link; }
-    } else {
-      alert("Google Maps link unavailable");
+      // quick heuristic: if link already contains origin/destination, open it
+      try { window.open(link, "_blank"); return; } catch (err) { window.location.href = link; return; }
     }
+
+    // fallback: construct Google Maps directions URL using current and destination coords
+    // extract destination coords from backend response or fallbackLocation
+    function extractCoords(obj) {
+      if (!obj) return null;
+      if (Array.isArray(obj) && obj.length >= 2) return { lat: Number(obj[0]), lon: Number(obj[1]) };
+      if (typeof obj === "object") {
+        if (obj.lat != null && obj.lon != null) return { lat: Number(obj.lat), lon: Number(obj.lon) };
+        if (obj.latitude != null && obj.longitude != null) return { lat: Number(obj.latitude), lon: Number(obj.longitude) };
+      }
+      return null;
+    }
+
+    const dest = extractCoords(gdata.GPS_coordinates ?? gdata.gps ?? fallbackLocation ?? null);
+
+    if (current && dest) {
+      const origin = `${Number(current.lat)},${Number(current.lon)}`;
+      const destination = `${Number(dest.lat)},${Number(dest.lon)}`;
+      const constructed = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+      window.open(constructed, "_blank");
+      return;
+    }
+
+    // if only destination available, open search for destination
+    if (dest) {
+      const constructed = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${dest.lat},${dest.lon}`)}`;
+      window.open(constructed, "_blank");
+      return;
+    }
+
+    // last resort: open any fallback text link or show message
+    alert("Google Maps directions unavailable");
   } catch (err) {
     console.error("Google action error:", err);
     alert("Failed to open Google Maps");
@@ -560,6 +629,26 @@ async function loadBoardingHouse(id, university, studentId) {
       });
     }
 
+    // Update legend descriptor (mirrors Dart's room status descriptions)
+    const legendContainer = document.querySelector(".legend");
+    if (legendContainer) {
+      // ensure descriptor block exists
+      let descBlock = document.querySelector(".legend-descriptions");
+      if (!descBlock) {
+        descBlock = document.createElement("div");
+        descBlock.className = "legend-descriptions";
+        descBlock.style.marginTop = "8px";
+        descBlock.style.fontSize = "13px";
+        descBlock.style.color = "#444";
+        legendContainer.parentNode.insertBefore(descBlock, legendContainer.nextSibling);
+      }
+      descBlock.innerHTML = `
+        <div><strong>Available</strong> — This room type currently has one or more spaces open. You can request or reserve a space for this room type.</div>
+        <div style="margin-top:6px"><strong>Unavailable</strong> — This room type currently has no spaces available.</div>
+        <div style="margin-top:6px"><strong>Not Supported</strong> — This room type is not supported or not listed for this boarding house.</div>
+      `;
+    }
+
     // Rooms grid
     const grid = document.querySelector(".rooms .grid");
     if (grid) {
@@ -573,12 +662,11 @@ async function loadBoardingHouse(id, university, studentId) {
         {type:"2 Shared Room", price:data.price_2, status:data.sharedroom_2, image:data.image_2},
         {type:"Single Room", price:data.price_1, status:data.singleroom, image:data.image_1},
       ];
+
       roomDefs.forEach(r => {
         const card = document.createElement("div");
         card.className = "room-card shimmer";
-        const badgeClass = (String(r.status || "").toUpperCase() === 'AVAILABLE') ? 'available'
-                         : (String(r.status || "").toUpperCase() === 'UNAVAILABLE') ? 'unavailable'
-                         : 'not-supported';
+
         const imgUrl = normalizeMediaUrl(r.image) || '/static/assets/icons/placeholder.jpg';
         const thumb = document.createElement("div");
         thumb.className = "thumb";
@@ -596,9 +684,14 @@ async function loadBoardingHouse(id, university, studentId) {
         const typeP = document.createElement("p");
         typeP.className = "room-type";
         typeP.textContent = r.type;
+
+        // normalize status and set badge text + visual
+        const rawStatus = r.status ?? "";
+        const statusToken = normalizeStatus(rawStatus);
         const badge = document.createElement("span");
-        badge.className = `badge-small ${badgeClass}`;
-        badge.textContent = (r.status && r.status.trim() !== "") ? r.status.toUpperCase() : 'NOT SUPPORTED';
+        badge.className = `badge-small ${statusToken === "available" ? "available" : statusToken === "unavailable" ? "unavailable" : "not-supported"}`;
+        badge.textContent = (rawStatus && String(rawStatus).trim() !== "") ? String(rawStatus).toUpperCase() : 'NOT SUPPORTED';
+
         header.appendChild(typeP);
         header.appendChild(badge);
 
@@ -612,6 +705,15 @@ async function loadBoardingHouse(id, university, studentId) {
         card.appendChild(thumb);
         card.appendChild(info);
         grid.appendChild(card);
+
+        // apply card visual highlight based on status
+        if (statusToken === "available") {
+          applyRoomCardVisual(card, "available");
+        } else if (statusToken === "unavailable") {
+          applyRoomCardVisual(card, "unavailable");
+        } else {
+          applyRoomCardVisual(card, "not-supported");
+        }
       });
     }
 
