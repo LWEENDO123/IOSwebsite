@@ -2,10 +2,17 @@ import { authorizedGet } from "./tokenManager.js";
 
 console.log("🚀 DETAIL CONTROLLER STARTED");
 
-let currentSlide = 0;
-let slides = [];
+/* ===============================
+   CONFIG
+================================ */
 const BASE_URL = "https://klenoboardinghouse-production.up.railway.app";
 const currentUserUniversity = localStorage.getItem("user_university") || "";
+
+/* ===============================
+   STATE
+================================ */
+let currentSlide = 0;
+let slides = [];
 
 /* ===============================
    UTILITIES
@@ -18,7 +25,6 @@ function normalizeMediaUrl(url) {
   const s = String(url).trim();
   if (!s) return null;
   if (s.startsWith("http://") || s.startsWith("https://")) {
-    // If backend returns full URL that already contains /media/, convert to root /media/ path
     if (s.includes("/media/")) {
       const parts = s.split("/media/");
       return `/media/${parts[1]}`;
@@ -26,7 +32,6 @@ function normalizeMediaUrl(url) {
     return s;
   }
   if (s.startsWith("/media/")) return s;
-  // Some backends return hostless paths like "bucket/key" or "media/key"
   if (s.includes("/media/")) {
     const parts = s.split("/media/");
     return `/media/${parts[1]}`;
@@ -35,8 +40,7 @@ function normalizeMediaUrl(url) {
 }
 
 /* ===============================
-   BUTTON LOADING UI HELPERS
-   - Adds a small spinner overlay inside the button while request runs
+   SPINNER / BUTTON LOADING HELPERS
 ================================ */
 
 function createSpinnerEl() {
@@ -64,7 +68,6 @@ function setButtonLoading(btn, isLoading) {
     btn.disabled = true;
     btn.classList.add("loading");
     if (!existing) btn.appendChild(createSpinnerEl());
-    // dim icon
     const img = btn.querySelector("img");
     if (img) img.style.opacity = "0.45";
   } else {
@@ -76,7 +79,7 @@ function setButtonLoading(btn, isLoading) {
   }
 }
 
-/* small keyframe injection for spinner (if not present) */
+/* inject spinner keyframes once */
 (function ensureSpinnerKeyframes() {
   if (document.getElementById("detail-js-spinner-style")) return;
   const style = document.createElement("style");
@@ -84,13 +87,29 @@ function setButtonLoading(btn, isLoading) {
   style.textContent = `
     @keyframes btn-spin { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
     .action-icon.loading { opacity: 0.9; }
+    .shimmer { background: linear-gradient(90deg, #f0f0f0 0%, #e8e8e8 50%, #f0f0f0 100%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+    @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
   `;
   document.head.appendChild(style);
 })();
 
 /* ===============================
+   PARAM VALIDATION
+================================ */
+
+function validateParams(houseId, university, studentId) {
+  console.group("🔎 PARAM VALIDATION");
+  if (!houseId) { console.error("❌ Missing houseId"); console.groupEnd(); return false; }
+  if (!studentId) { console.error("❌ Missing studentId"); console.groupEnd(); return false; }
+  if (!university && !currentUserUniversity) { console.error("❌ Missing university"); console.groupEnd(); return false; }
+  console.log("✅ Params valid");
+  console.groupEnd();
+  return true;
+}
+
+/* ===============================
    NETWORK DEBUGGER
-   - returns parsed JSON object or null
+   returns parsed JSON or null
 ================================ */
 
 async function debugRequest(url) {
@@ -130,7 +149,7 @@ async function debugRequest(url) {
       console.log("📄 JSON Object:", data);
     } catch (parseError) {
       console.error("❌ JSON Parsing Failed", parseError);
-      // keep data as null so callers can handle gracefully
+      // keep data null so callers can handle gracefully
     }
 
     console.groupEnd();
@@ -143,7 +162,36 @@ async function debugRequest(url) {
 }
 
 /* ===============================
-   GALLERY
+   GEOLOCATION
+================================ */
+
+function getCurrentLocation() {
+  console.group("📍 LOCATION REQUEST");
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      console.error("❌ Geolocation not supported");
+      console.groupEnd();
+      return reject("Geolocation not supported");
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const location = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        console.log("📍 Location received:", location);
+        console.groupEnd();
+        resolve(location);
+      },
+      (err) => {
+        console.error("❌ Location error:", err.message || err);
+        console.groupEnd();
+        reject(err.message || err);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+}
+
+/* ===============================
+   GALLERY HELPERS
 ================================ */
 
 function renderDots() {
@@ -182,6 +230,7 @@ function createSlide(item) {
     video.src = mediaUrl;
     video.preload = "metadata";
     video.onloadeddata = () => slide.classList.remove("shimmer");
+    video.onerror = () => slide.classList.remove("shimmer");
     slide.appendChild(video);
   } else {
     const img = document.createElement("img");
@@ -195,59 +244,183 @@ function createSlide(item) {
 }
 
 /* ===============================
+   ACTIONS: Phone, Google, Yango, Bus
+================================ */
+
+async function callLandlordPhone(id, uniToSend, studentId, btn) {
+  console.group("📞 PHONE BUTTON CLICKED");
+  setButtonLoading(btn, true);
+  try {
+    const phoneUrl = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}/landlord-phone?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}`;
+    const phoneData = await debugRequest(phoneUrl);
+    if (!phoneData) { alert("Phone information unavailable"); return; }
+
+    const phone = phoneData.phone_number ?? phoneData.phone ?? phoneData.phoneNumber ?? null;
+    const message = phoneData.message ?? null;
+
+    if (phone) {
+      try {
+        window.location.href = `tel:${phone}`;
+        try { window.open(`tel:${phone}`); } catch (e) {}
+      } catch (err) {
+        alert(`Landlord phone: ${phone}`);
+      }
+    } else if (message) {
+      alert(message);
+    } else {
+      alert("Phone number unavailable");
+    }
+  } catch (err) {
+    console.error("Phone action error:", err);
+    alert("Failed to fetch phone number");
+  } finally {
+    setButtonLoading(btn, false);
+    console.groupEnd();
+  }
+}
+
+async function openGoogleMaps(id, uniToSend, studentId, btn, fallbackLocation) {
+  console.group("🗺 GOOGLE MAPS BUTTON");
+  setButtonLoading(btn, true);
+  try {
+    const loc = await (async () => {
+      if (fallbackLocation && fallbackLocation.lat && fallbackLocation.lon) return { lat: fallbackLocation.lat, lon: fallbackLocation.lon };
+      return await getCurrentLocation();
+    })();
+
+    const googleUrl = `${BASE_URL}/home/google/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}&current_lat=${encodeURIComponent(loc.lat)}&current_lon=${encodeURIComponent(loc.lon)}`;
+    const gdata = await debugRequest(googleUrl);
+    if (!gdata) { alert("Google Maps link unavailable"); return; }
+
+    const link = gdata.link ?? gdata.url ?? gdata.maps_link ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallbackLocation?.text || "")}`;
+    if (link) {
+      try { window.open(link, "_blank"); } catch (err) { window.location.href = link; }
+    } else {
+      alert("Google Maps link unavailable");
+    }
+  } catch (err) {
+    console.error("Google action error:", err);
+    alert("Failed to open Google Maps");
+  } finally {
+    setButtonLoading(btn, false);
+    console.groupEnd();
+  }
+}
+
+async function openYango(id, uniToSend, studentId, btn, fallbackLocation) {
+  console.group("🚗 YANGO BUTTON");
+  setButtonLoading(btn, true);
+  try {
+    const loc = await (async () => {
+      if (fallbackLocation && fallbackLocation.lat && fallbackLocation.lon) return { lat: fallbackLocation.lat, lon: fallbackLocation.lon };
+      return await getCurrentLocation();
+    })();
+
+    const yangoUrl = `${BASE_URL}/home/yango/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}&current_lat=${encodeURIComponent(loc.lat)}&current_lon=${encodeURIComponent(loc.lon)}`;
+    const ydata = await debugRequest(yangoUrl);
+    if (!ydata) { alert("Yango link unavailable"); return; }
+
+    const browser = ydata.browser_link ?? ydata.browserLink ?? ydata.browser ?? ydata.url ?? null;
+    const deep = ydata.deep_link ?? ydata.deepLink ?? ydata.deep ?? null;
+    const fallback = ydata.url ?? null;
+
+    // Prefer browser link for desktop; open deep link in a tab if provided (mobile will handle it)
+    if (browser) {
+      try { window.open(browser, "_blank"); } catch (err) { window.location.href = browser; }
+    } else if (deep) {
+      try { window.open(deep, "_blank"); } catch (err) { alert(`Yango link: ${deep}`); }
+    } else if (fallback) {
+      try { window.open(fallback, "_blank"); } catch (err) { window.location.href = fallback; }
+    } else {
+      alert("Yango ride unavailable");
+    }
+  } catch (err) {
+    console.error("Yango action error:", err);
+    alert("Failed to launch Yango");
+  } finally {
+    setButtonLoading(btn, false);
+    console.groupEnd();
+  }
+}
+
+async function openBus(id, uniToSend, studentId, btn) {
+  console.group("🚌 BUS BUTTON CLICKED");
+  setButtonLoading(btn, true);
+  try {
+    const summaryUrl = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}?student_id=${encodeURIComponent(studentId)}&university=${encodeURIComponent(uniToSend)}`;
+    const sdata = await debugRequest(summaryUrl);
+    if (!sdata) { alert("Location not available"); return; }
+
+    const lat = (Array.isArray(sdata.GPS_coordinates) && sdata.GPS_coordinates.length >= 2) ? sdata.GPS_coordinates[0] : (sdata.GPS_coordinates?.lat ?? null);
+    const lon = (Array.isArray(sdata.GPS_coordinates) && sdata.GPS_coordinates.length >= 2) ? sdata.GPS_coordinates[1] : (sdata.GPS_coordinates?.lon ?? null);
+
+    if (lat && lon) {
+      const mapsQuery = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`;
+      window.open(mapsQuery, "_blank");
+    } else if (sdata.location) {
+      const mapsQuery = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sdata.location)}`;
+      window.open(mapsQuery, "_blank");
+    } else {
+      alert("Bus stop or location not available");
+    }
+  } catch (err) {
+    console.error("Bus action error:", err);
+    alert("Failed to open bus location");
+  } finally {
+    setButtonLoading(btn, false);
+    console.groupEnd();
+  }
+}
+
+/* ===============================
    LOAD BOARDING HOUSE
 ================================ */
 
 async function loadBoardingHouse(id, university, studentId) {
+  console.group("🚀 LOAD BOARDING HOUSE");
+  safeLog("params:", { id, university, studentId });
+
+  if (!validateParams(id, university, studentId)) {
+    alert("Missing required parameters");
+    console.groupEnd();
+    return;
+  }
+
+  const uniToSend = (university && university !== "default") ? university : (currentUserUniversity || "");
+  if (!uniToSend) {
+    alert("Missing university parameter");
+    console.groupEnd();
+    return;
+  }
+
+  const url = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}?student_id=${encodeURIComponent(studentId)}&university=${encodeURIComponent(uniToSend)}`;
+
   try {
-    if (!id || !studentId) {
-      alert("Missing boarding house id or student id");
-      return;
-    }
-
-    let uniToSend = university && university !== "default"
-      ? university
-      : (currentUserUniversity || "");
-
-    if (!uniToSend) {
-      alert("Missing university parameter");
-      return;
-    }
-
-    const url = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}?student_id=${encodeURIComponent(studentId)}&university=${encodeURIComponent(uniToSend)}`;
-
-    // show global page loading indicator (optional)
-    safeLog("Fetching boarding house:", url);
-
     const resData = await debugRequest(url);
     if (!resData) {
       alert("No data returned from server for this boarding house");
+      console.groupEnd();
       return;
     }
 
-    // Accept multiple naming conventions from backend
+    // Normalize backend shapes
     const data = {
-      // name: backend may return name_boardinghouse or name
       name_boardinghouse: resData.name_boardinghouse ?? resData.name ?? "",
       location: resData.location ?? resData.address ?? "",
       phone_number: resData.phone_number ?? resData.phone ?? resData.phoneNumber ?? null,
-      GPS_coordinates: (resData.GPS_coordinates && Array.isArray(resData.GPS_coordinates))
-        ? { lat: resData.GPS_coordinates[0], lon: resData.GPS_coordinates[1] }
-        : (resData.GPS_coordinates ?? resData.gps ?? null),
-      yango_coordinates: (resData.yango_coordinates && Array.isArray(resData.yango_coordinates))
-        ? { lat: resData.yango_coordinates[0], lon: resData.yango_coordinates[1] }
-        : (resData.yango_coordinates ?? null),
+      GPS_coordinates: Array.isArray(resData.GPS_coordinates) ? { lat: resData.GPS_coordinates[0], lon: resData.GPS_coordinates[1] } : (resData.GPS_coordinates ?? null),
+      yango_coordinates: Array.isArray(resData.yango_coordinates) ? { lat: resData.yango_coordinates[0], lon: resData.yango_coordinates[1] } : (resData.yango_coordinates ?? null),
       gallery: Array.isArray(resData.gallery) ? resData.gallery : (Array.isArray(resData.images) ? resData.images.map(u => ({ type: "image", url: u })) : []),
       space_description: resData.space_description ?? resData.spaceDescription ?? "",
       conditions: resData.conditions ?? "",
-      amenities: Array.isArray(resData.amenities) ? resData.amenities : [],
-      price_1: resData.price_1 ?? resData.price1 ?? resData.price_1,
-      price_2: resData.price_2 ?? resData.price2 ?? resData.price_2,
-      price_3: resData.price_3 ?? resData.price3 ?? resData.price_3,
-      price_4: resData.price_4 ?? resData.price4 ?? resData.price_4,
-      price_5: resData.price_5 ?? resData.price5 ?? resData.price_5,
-      price_6: resData.price_6 ?? resData.price6 ?? resData.price_6,
-      price_12: resData.price_12 ?? resData.price12 ?? resData.price_12,
+      amenities: Array.isArray(resData.amenities) ? resData.amenities : (Array.isArray(resData.amenities_list) ? resData.amenities_list : []),
+      price_1: resData.price_1 ?? resData.price1 ?? null,
+      price_2: resData.price_2 ?? resData.price2 ?? null,
+      price_3: resData.price_3 ?? resData.price3 ?? null,
+      price_4: resData.price_4 ?? resData.price4 ?? null,
+      price_5: resData.price_5 ?? resData.price5 ?? null,
+      price_6: resData.price_6 ?? resData.price6 ?? null,
+      price_12: resData.price_12 ?? resData.price12 ?? null,
       image_1: resData.image_1 ?? resData.image1 ?? null,
       image_2: resData.image_2 ?? resData.image2 ?? null,
       image_3: resData.image_3 ?? resData.image3 ?? null,
@@ -265,165 +438,40 @@ async function loadBoardingHouse(id, university, studentId) {
       amenities_raw: resData.amenities ?? resData.amenities_list ?? [],
     };
 
-    // Populate UI
+    // Populate UI elements
     const houseNameEl = document.querySelector(".house-name");
     if (houseNameEl) houseNameEl.textContent = (data.name_boardinghouse || "").toUpperCase();
 
     const locationEl = document.querySelector(".location");
     if (locationEl) locationEl.textContent = "📍 " + (data.location || "");
 
-    // Buttons (use buttons with ids if present)
+    // Buttons
     const phoneBtn = document.getElementById("phoneBtn") || document.querySelector(".action-icon.phone");
     const googleBtn = document.getElementById("googleBtn") || document.querySelector(".action-icon.google");
     const yangoBtn = document.getElementById("yangoBtn") || document.querySelector(".action-icon.yango");
     const busBtn = document.getElementById("busBtn") || document.querySelector(".action-icon.bus");
 
-    // Attach click handlers that show loading state while performing network calls
+    // Attach handlers (idempotent)
     if (phoneBtn) {
-      phoneBtn.onclick = async (e) => {
-        e.preventDefault();
-        setButtonLoading(phoneBtn, true);
-        try {
-          // call landlord-phone endpoint to get the canonical response (ensures same logic as backend)
-          const phoneUrl = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}/landlord-phone?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}`;
-          const phoneData = await debugRequest(phoneUrl);
-          const phone = phoneData?.phone_number ?? phoneData?.phone ?? data.phone_number;
-          const message = phoneData?.message ?? null;
-          if (phone) {
-            // try to open tel: on mobile; fallback to alert
-            try {
-              window.location.href = `tel:${phone}`;
-              try { window.open(`tel:${phone}`); } catch (e) {}
-            } catch (err) {
-              alert(`Landlord phone: ${phone}`);
-            }
-          } else if (message) {
-            alert(message);
-          } else {
-            alert("Phone number unavailable");
-          }
-        } catch (err) {
-          console.error("Phone action error:", err);
-          alert("Failed to fetch phone number");
-        } finally {
-          setButtonLoading(phoneBtn, false);
-        }
-      };
+      phoneBtn.onclick = (e) => { e.preventDefault(); callLandlordPhone(id, uniToSend, studentId, phoneBtn); };
     }
-
     if (googleBtn) {
-      googleBtn.onclick = async (e) => {
-        e.preventDefault();
-        setButtonLoading(googleBtn, true);
-        try {
-          // prefer backend google endpoint to compute link
-          const loc = await (async () => {
-            // if GPS coordinates already present in payload, use them; else request browser location
-            if (data.GPS_coordinates && data.GPS_coordinates.lat && data.GPS_coordinates.lon) {
-              return { lat: data.GPS_coordinates.lat, lon: data.GPS_coordinates.lon };
-            }
-            // request browser location
-            return await new Promise((resolve, reject) => {
-              if (!navigator.geolocation) return reject("Geolocation not supported");
-              navigator.geolocation.getCurrentPosition(pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }), err => reject(err.message || err), { enableHighAccuracy: true, timeout: 10000 });
-            });
-          })();
-
-          const googleUrl = `${BASE_URL}/home/google/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}&current_lat=${encodeURIComponent(loc.lat)}&current_lon=${encodeURIComponent(loc.lon)}`;
-          const gdata = await debugRequest(googleUrl);
-          const link = gdata?.link ?? gdata?.url ?? gdata?.maps_link ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location || "")}`;
-          if (link) {
-            try { window.open(link, "_blank"); } catch (err) { window.location.href = link; }
-          } else {
-            alert("Google Maps link unavailable");
-          }
-        } catch (err) {
-          console.error("Google action error:", err);
-          alert("Failed to open Google Maps");
-        } finally {
-          setButtonLoading(googleBtn, false);
-        }
-      };
+      googleBtn.onclick = (e) => { e.preventDefault(); openGoogleMaps(id, uniToSend, studentId, googleBtn, data.GPS_coordinates || { text: data.location }); };
     }
-
     if (yangoBtn) {
-      yangoBtn.onclick = async (e) => {
-        e.preventDefault();
-        setButtonLoading(yangoBtn, true);
-        try {
-          const loc = await (async () => {
-            if (data.yango_coordinates && data.yango_coordinates.lat && data.yango_coordinates.lon) {
-              return { lat: data.yango_coordinates.lat, lon: data.yango_coordinates.lon };
-            }
-            if (data.GPS_coordinates && data.GPS_coordinates.lat && data.GPS_coordinates.lon) {
-              return { lat: data.GPS_coordinates.lat, lon: data.GPS_coordinates.lon };
-            }
-            return await new Promise((resolve, reject) => {
-              if (!navigator.geolocation) return reject("Geolocation not supported");
-              navigator.geolocation.getCurrentPosition(pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }), err => reject(err.message || err), { enableHighAccuracy: true, timeout: 10000 });
-            });
-          })();
-
-          const yangoUrl = `${BASE_URL}/home/yango/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}&current_lat=${encodeURIComponent(loc.lat)}&current_lon=${encodeURIComponent(loc.lon)}`;
-          const ydata = await debugRequest(yangoUrl);
-          const deep = ydata?.deep_link ?? ydata?.deepLink ?? ydata?.deep;
-          const browser = ydata?.browser_link ?? ydata?.browserLink ?? ydata?.browser ?? ydata?.url;
-          const fallback = ydata?.url ?? null;
-
-          if (deep) {
-            try { window.location.href = deep; } catch (err) { if (browser) try { window.open(browser, "_blank"); } catch (e) { alert(`Yango link: ${deep}`); } }
-          } else if (browser) {
-            try { window.open(browser, "_blank"); } catch (err) { window.location.href = browser; }
-          } else if (fallback) {
-            try { window.open(fallback, "_blank"); } catch (err) { window.location.href = fallback; }
-          } else {
-            alert("Yango ride unavailable");
-          }
-        } catch (err) {
-          console.error("Yango action error:", err);
-          alert("Failed to launch Yango");
-        } finally {
-          setButtonLoading(yangoBtn, false);
-        }
-      };
+      yangoBtn.onclick = (e) => { e.preventDefault(); openYango(id, uniToSend, studentId, yangoBtn, data.yango_coordinates || data.GPS_coordinates); };
     }
-
     if (busBtn) {
-      busBtn.onclick = async (e) => {
-        e.preventDefault();
-        setButtonLoading(busBtn, true);
-        try {
-          // Use summary endpoint to extract coordinates or location text
-          const summaryUrl = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}?student_id=${encodeURIComponent(studentId)}&university=${encodeURIComponent(uniToSend)}`;
-          const sdata = await debugRequest(summaryUrl);
-          const lat = (sdata?.GPS_coordinates && Array.isArray(sdata.GPS_coordinates)) ? sdata.GPS_coordinates[0] : (sdata?.GPS_coordinates?.lat ?? null);
-          const lon = (sdata?.GPS_coordinates && Array.isArray(sdata.GPS_coordinates)) ? sdata.GPS_coordinates[1] : (sdata?.GPS_coordinates?.lon ?? null);
-          if (lat && lon) {
-            const mapsQuery = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`;
-            window.open(mapsQuery, "_blank");
-          } else if (sdata?.location) {
-            const mapsQuery = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sdata.location)}`;
-            window.open(mapsQuery, "_blank");
-          } else {
-            alert("Bus stop or location not available");
-          }
-        } catch (err) {
-          console.error("Bus action error:", err);
-          alert("Failed to open bus location");
-        } finally {
-          setButtonLoading(busBtn, false);
-        }
-      };
+      busBtn.onclick = (e) => { e.preventDefault(); openBus(id, uniToSend, studentId, busBtn); };
     }
 
-    // Gallery rendering
+    // Gallery
     const gallerySlider = document.querySelector(".gallery-slider");
     if (gallerySlider) {
       gallerySlider.innerHTML = "";
       slides = [];
       const galleryItems = Array.isArray(resData.gallery) ? resData.gallery : (Array.isArray(resData.images) ? resData.images.map(u => ({ type: "image", url: u })) : []);
       galleryItems.forEach(item => {
-        // normalize item shape if it's a string
         const normalizedItem = (typeof item === "string") ? { type: "image", url: item } : item;
         const slide = createSlide(normalizedItem);
         gallerySlider.appendChild(slide);
@@ -507,11 +555,13 @@ async function loadBoardingHouse(id, university, studentId) {
   } catch (err) {
     console.error("Error loading boarding house details:", err);
     alert("Error loading boarding house details");
+  } finally {
+    console.groupEnd();
   }
 }
 
 /* ===============================
-   BOOTSTRAP: parse params and call loader
+   BOOTSTRAP
 ================================ */
 
 (function init() {
