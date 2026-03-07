@@ -311,29 +311,79 @@ async function openYango(id, uniToSend, studentId, btn, fallbackLocation) {
   console.group("🚗 YANGO BUTTON");
   setButtonLoading(btn, true);
   try {
-    const loc = await (async () => {
-      if (fallbackLocation && fallbackLocation.lat && fallbackLocation.lon) return { lat: fallbackLocation.lat, lon: fallbackLocation.lon };
-      return await getCurrentLocation();
-    })();
+    // 1) Try to get current location for gfrom
+    let current = null;
+    try {
+      current = await getCurrentLocation();
+    } catch (err) {
+      console.warn("Could not get current location:", err);
+      current = null;
+    }
 
-    const yangoUrl = `${BASE_URL}/home/yango/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}&current_lat=${encodeURIComponent(loc.lat)}&current_lon=${encodeURIComponent(loc.lon)}`;
+    // 2) Ask backend for Yango data (it may include destination coords or links)
+    const yangoUrl = `${BASE_URL}/home/yango/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}${current ? `&current_lat=${encodeURIComponent(current.lat)}&current_lon=${encodeURIComponent(current.lon)}` : ''}`;
     const ydata = await debugRequest(yangoUrl);
     if (!ydata) { alert("Yango link unavailable"); return; }
 
-    const browser = ydata.browser_link ?? ydata.browserLink ?? ydata.browser ?? ydata.url ?? null;
-    const deep = ydata.deep_link ?? ydata.deepLink ?? ydata.deep ?? null;
-    const fallback = ydata.url ?? null;
-
-    // Prefer browser link for desktop; open deep link in a tab if provided (mobile will handle it)
-    if (browser) {
-      try { window.open(browser, "_blank"); } catch (err) { window.location.href = browser; }
-    } else if (deep) {
-      try { window.open(deep, "_blank"); } catch (err) { alert(`Yango link: ${deep}`); }
-    } else if (fallback) {
-      try { window.open(fallback, "_blank"); } catch (err) { window.location.href = fallback; }
-    } else {
-      alert("Yango ride unavailable");
+    // helper to extract coords from various shapes
+    function extractCoords(obj) {
+      if (!obj) return null;
+      if (Array.isArray(obj) && obj.length >= 2) return { lat: Number(obj[0]), lon: Number(obj[1]) };
+      if (typeof obj === "object") {
+        if (obj.lat != null && obj.lon != null) return { lat: Number(obj.lat), lon: Number(obj.lon) };
+        if (obj.latitude != null && obj.longitude != null) return { lat: Number(obj.latitude), lon: Number(obj.longitude) };
+      }
+      return null;
     }
+
+    const destFromYangoCoords = extractCoords(ydata.yango_coordinates ?? ydata.yango_coords ?? null);
+    const destFromGPS = extractCoords(ydata.GPS_coordinates ?? ydata.gps ?? null);
+    const destFromPayload = extractCoords(fallbackLocation ?? null);
+    const dest = destFromYangoCoords || destFromGPS || destFromPayload || null;
+
+    // Prefer backend-provided browser_link if it already contains both gfrom and gto
+    const browserLink = ydata.browser_link ?? ydata.browserLink ?? ydata.browser ?? ydata.url ?? null;
+    if (browserLink && current && dest) {
+      const hasFrom = browserLink.includes("gfrom=");
+      const hasTo = browserLink.includes("gto=");
+      if (hasFrom && hasTo) {
+        console.log("🚗 Opening backend browser_link (contains gfrom & gto):", browserLink);
+        window.open(browserLink, "_blank");
+        return;
+      }
+    }
+
+    // Build constructed Yango browser order URL using current location and destination
+    const tariff = encodeURIComponent(ydata.tariff ?? "econom");
+    const lang = encodeURIComponent(ydata.lang ?? "en_int");
+
+    if (current && dest) {
+      const gfrom = `${Number(current.lat)},${Number(current.lon)}`;
+      const gto = `${Number(dest.lat)},${Number(dest.lon)}`;
+      const constructed = `https://yango.com/${lang}/order/?gfrom=${encodeURIComponent(gfrom)}&gto=${encodeURIComponent(gto)}&tariff=${tariff}&lang=${lang}`;
+      console.log("🚗 Opening constructed Yango browser link:", constructed);
+      window.open(constructed, "_blank");
+      return;
+    }
+
+    // If we only have destination, open destination-only link
+    if (!current && dest) {
+      const gto = `${Number(dest.lat)},${Number(dest.lon)}`;
+      const constructed = `https://yango.com/${lang}/order/?gto=${encodeURIComponent(gto)}&tariff=${tariff}&lang=${lang}`;
+      console.log("🚗 Opening Yango link with destination only:", constructed);
+      window.open(constructed, "_blank");
+      return;
+    }
+
+    // Fallback: open deep link (may trigger app on mobile) or show message
+    const deep = ydata.deep_link ?? ydata.deepLink ?? ydata.deep ?? null;
+    if (deep) {
+      console.log("🚗 Opening deep link (mobile may handle):", deep);
+      try { window.open(deep, "_blank"); } catch (err) { alert(`Yango link: ${deep}`); }
+      return;
+    }
+
+    alert("Yango ride unavailable");
   } catch (err) {
     console.error("Yango action error:", err);
     alert("Failed to launch Yango");
@@ -530,23 +580,36 @@ async function loadBoardingHouse(id, university, studentId) {
                          : (String(r.status || "").toUpperCase() === 'UNAVAILABLE') ? 'unavailable'
                          : 'not-supported';
         const imgUrl = normalizeMediaUrl(r.image) || '/static/assets/icons/placeholder.jpg';
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
         const img = document.createElement("img");
         img.src = imgUrl;
         img.alt = r.type;
         img.onload = () => card.classList.remove("shimmer");
         img.onerror = () => card.classList.remove("shimmer");
+        thumb.appendChild(img);
 
         const info = document.createElement("div");
         info.className = "room-info";
-        info.innerHTML = `
-          <div class="room-header">
-            <p class="room-type">${r.type}</p>
-            <span class="badge ${badgeClass}">${r.status || 'NOT SUPPORTED'}</span>
-          </div>
-          <p class="room-price">Price: ${r.price || 'N/A'}</p>
-        `;
+        const header = document.createElement("div");
+        header.className = "room-header";
+        const typeP = document.createElement("p");
+        typeP.className = "room-type";
+        typeP.textContent = r.type;
+        const badge = document.createElement("span");
+        badge.className = `badge-small ${badgeClass}`;
+        badge.textContent = (r.status && r.status.trim() !== "") ? r.status.toUpperCase() : 'NOT SUPPORTED';
+        header.appendChild(typeP);
+        header.appendChild(badge);
 
-        card.appendChild(img);
+        const priceP = document.createElement("p");
+        priceP.className = "room-price";
+        priceP.textContent = `Price: ${r.price || 'N/A'}`;
+
+        info.appendChild(header);
+        info.appendChild(priceP);
+
+        card.appendChild(thumb);
         card.appendChild(info);
         grid.appendChild(card);
       });
