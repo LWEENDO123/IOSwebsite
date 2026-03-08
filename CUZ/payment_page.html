@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>KLENO Premium Payment</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <style>
+    :root{
+      --brand:#66D4FF;
+      --muted:#666;
+      --card-radius:12px;
+      --shadow: 0 6px 18px rgba(0,0,0,0.06);
+      --success:#1e9b3a;
+      --danger:#d32f2f;
+    }
+
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:#fff;color:#222}
+    header{background:var(--brand);color:#000;padding:12px 14px;display:flex;align-items:center;justify-content:center;position:relative}
+    header h1{margin:0;font-size:18px;font-weight:700;color:#000}
+    .container{padding:14px;max-width:920px;margin:0 auto}
+
+    .intro{text-align:center;margin:18px 0}
+    .intro h2{margin:0 0 8px;font-size:22px}
+    .intro p{margin:0;color:var(--muted)}
+
+    .tiers{display:grid;gap:12px}
+    @media(min-width:900px){.tiers{grid-template-columns:1fr 1fr}}
+
+    .card{background:#fff;border-radius:var(--card-radius);box-shadow:var(--shadow);overflow:hidden}
+    .card .header{padding:12px;background:linear-gradient(90deg,#f7fbff,var(--brand));color:#000;font-weight:700;text-align:center}
+    .card .body{padding:12px}
+
+    .feature{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f2f2f2}
+    .feature:last-child{border-bottom:0}
+    .feature .icon{width:20px;height:20px;flex:0 0 20px}
+    .feature .text{font-size:14px;color:#111}
+
+    .promo{padding:12px;text-align:center;font-weight:700;color:#111}
+
+    .payment-card{margin-top:18px;border-radius:var(--card-radius);box-shadow:var(--shadow);padding:14px;background:#fff}
+    .payment-row{display:flex;gap:10px;align-items:center;margin-bottom:12px}
+    .payment-row label{min-width:140px;font-weight:600;font-size:14px}
+    .input{flex:1}
+    input[type="text"], input[type="tel"], select{
+      width:100%;padding:10px;border-radius:8px;border:1px solid #e6e6e6;font-size:14px
+    }
+
+    .radio-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+    .radio-item{display:flex;gap:8px;align-items:center}
+
+    .cta{display:flex;gap:12px;justify-content:center;margin-top:12px}
+    .btn{background:var(--brand);border:none;padding:12px 20px;border-radius:30px;color:#fff;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+    .operators{display:flex;gap:18px;justify-content:center;margin-top:14px}
+    .op{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .op img{width:48px;height:48px;object-fit:contain;border-radius:50%;background:#fff;padding:6px;box-shadow:0 2px 6px rgba(0,0,0,0.06)}
+
+    .message{margin-top:12px;text-align:center;font-weight:700}
+    .message.success{color:var(--success)}
+    .message.error{color:var(--danger)}
+
+    .small-note{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
+    .debug-pre{white-space:pre-wrap;font-family:monospace;background:#fafafa;border:1px solid #eee;padding:10px;border-radius:8px;margin-top:12px}
+  </style>
+</head>
+<body>
+  <header><h1>Premium Access</h1></header>
+
+  <main class="container">
+    <section class="intro">
+      <h2>Unlock Premium</h2>
+      <p>Maps, direct landlord contact and priority features for premium users. Payment via Airtel Mobile Money.</p>
+    </section>
+
+    <section class="tiers" aria-label="Plans">
+      <div class="card">
+        <div class="header" style="background:#f2f2f2">Free Plan</div>
+        <div class="body">
+          <div class="feature"><div class="icon">✅</div><div class="text">Browse boarding houses</div></div>
+          <div class="feature"><div class="icon">✅</div><div class="text">Check room availability</div></div>
+          <div class="feature"><div class="icon">⚠️</div><div class="text">Maps & directions — Premium only</div></div>
+          <div class="feature"><div class="icon">⚠️</div><div class="text">Direct landlord contact — Premium only</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="header">Premium Plan</div>
+        <div class="body">
+          <div class="feature"><div class="icon">✅</div><div class="text">Browse boarding houses</div></div>
+          <div class="feature"><div class="icon">✅</div><div class="text">Maps & directions</div></div>
+          <div class="feature"><div class="icon">⚠️</div><div class="text">Pin favorites — under maintenance</div></div>
+          <div class="feature"><div class="icon">✅</div><div class="text">Direct landlord contact</div></div>
+
+          <div class="promo">Early users promo: 50% discount</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="payment-card" aria-label="Payment">
+      <div style="text-align:center;margin-bottom:12px"><strong>Payment Method</strong></div>
+
+      <div id="storedPhoneContainer" style="margin-bottom:12px"></div>
+
+      <div class="payment-row">
+        <label for="phoneInput">Mobile Money Number</label>
+        <div class="input">
+          <input id="phoneInput" type="tel" placeholder="e.g. 0971234567 or +260971234567" />
+        </div>
+      </div>
+
+      <div class="payment-row">
+        <label for="operatorSelect">Operator</label>
+        <div class="input">
+          <select id="operatorSelect">
+            <option value="auto">Auto detect</option>
+            <option value="airtel">Airtel</option>
+            <option value="mtn">MTN</option>
+            <option value="zamtel">Zamtel</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="small-note">Only Airtel is supported right now. MTN and Zamtel are shown for reference.</div>
+
+      <div class="cta">
+        <button id="payBtn" class="btn">Pay ZMW 75 / 150</button>
+      </div>
+
+      <div id="statusMessage" class="message" role="status" aria-live="polite"></div>
+
+      <div class="operators" aria-hidden="false">
+        <div class="op"><img src="/static/assets/operators/MTN.png" alt="MTN"><div style="font-size:12px;color:var(--muted)">MTN</div></div>
+        <div class="op"><img src="/static/assets/operators/AIRTEL.png" alt="Airtel"><div style="font-size:12px;color:var(--muted)">Airtel</div></div>
+        <div class="op"><img src="/static/assets/operators/ZAMTEL.png" alt="Zamtel"><div style="font-size:12px;color:var(--muted)">Zamtel</div></div>
+      </div>
+
+      <div id="debug" class="debug-pre" style="display:none"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/static/javascript/premium.js"></script>
+</body>
+</html>
