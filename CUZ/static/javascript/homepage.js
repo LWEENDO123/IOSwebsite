@@ -1,4 +1,9 @@
+// /static/javascript/homepage.js
 import { authorizedGet } from "./tokenManager.js";
+
+const baseUrl = "https://klenoboardinghouse-production.up.railway.app";
+const studentId = localStorage.getItem("user_id") || "";
+const currentUserUniversity = localStorage.getItem("user_university") || "";
 
 let page = 1;
 const limit = 10;
@@ -6,85 +11,50 @@ let hasMore = true;
 let isLoading = false;
 let selectedFilter = "all";
 let selectedUniversity = "";
-const studentId = localStorage.getItem("user_id");
-const currentUserUniversity = localStorage.getItem("user_university") || ""; // fallback from localStorage
-const baseUrl = "https://klenoboardinghouse-production.up.railway.app";
+let scopedMode = false; // when true use /home/scoped
 
-// Helper: normalize image URLs like Dart
+// DOM
+const houseListEl = document.getElementById("houseList");
+const loaderEl = document.getElementById("loader");
+const emptyEl = document.getElementById("empty");
+const uniSelect = document.getElementById("universitySelect");
+const searchBtn = document.getElementById("searchBtn");
+
+// Helpers
+function showLoader(show = true) {
+  loaderEl.style.display = show ? "block" : "none";
+}
+function showEmpty(show = true) {
+  emptyEl.style.display = show ? "block" : "none";
+}
 function normalizeImageUrl(url) {
   if (!url) return "https://via.placeholder.com/400x200";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `https://${url}`;
+  const s = String(url).trim();
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("/")) return s;
+  return s;
 }
-
-// Helper: pick correct gender icon
 function getGenderIcon(gender) {
   const g = (gender || "").toLowerCase();
-  if (g === "male") return "/staticassets/icons/male.png";
-  if (g === "female") return "static/assets/icons/female.png";
-  if (g === "mixed") return "static/assets/icons/mixed.png";
-  return "static/assets/icons/both.png";
+  if (g === "male") return "/static/assets/icons/male.png";
+  if (g === "female") return "/static/assets/icons/female.png";
+  if (g === "mixed") return "/static/assets/icons/mixed.png";
+  return "/static/assets/icons/both.png";
 }
 
-async function fetchHouses(refresh = false) {
-  if (isLoading || !hasMore) return;
-  isLoading = true;
-  document.getElementById("loader").style.display = "block";
-
-  if (refresh) {
-    page = 1;
-    document.getElementById("houseList").innerHTML = "";
-    hasMore = true;
-  }
-
-  const scope = selectedUniversity ? "scoped" : "default";
-  const uniParam = selectedUniversity ? `&university=${encodeURIComponent(selectedUniversity)}` : "";
-  const url = `${baseUrl}/home?student_id=${encodeURIComponent(studentId)}${uniParam}&scope=${scope}&page=${page}&limit=${limit}&filter=${encodeURIComponent(selectedFilter)}`;
-
-  console.log("[DEBUG] Fetching houses from:", url);
-
-  try {
-    const res = await authorizedGet(url);
-    console.log("[DEBUG] Response status:", res.status);
-
-    const data = await res.json();
-    console.log("[DEBUG] Response JSON:", data);
-
-    if (res.ok) {
-      const houses = data.data || [];
-      console.log("[DEBUG] Houses array length:", houses.length);
-
-      houses.forEach(h => {
-        console.log("[DEBUG] Rendering house:", h);
-        renderHouse(h);
-      });
-
-      page++;
-      hasMore = houses.length === limit;
-      console.log("[DEBUG] hasMore:", hasMore, "next page:", page);
-    } else {
-      console.error("[DEBUG] Failed response:", data);
-    }
-  } catch (err) {
-    console.error("[DEBUG] Error fetching houses:", err);
-  } finally {
-    isLoading = false;
-    document.getElementById("loader").style.display = "none";
-  }
-}
-
+// Render single house card
 function renderHouse(house) {
   const card = document.createElement("div");
   card.className = "house-card";
 
-  const coverImage = normalizeImageUrl(house.cover_image || house.image);
+  const coverImage = normalizeImageUrl(house.cover_image || house.image || house.coverImage);
   const genderIcon = getGenderIcon(house.gender);
 
   card.innerHTML = `
-    <img src="${coverImage}" alt="${house.name_boardinghouse}">
+    <img src="${coverImage}" alt="${(house.name_boardinghouse || house.name || '').replace(/"/g,'')}" loading="lazy">
     <div class="info">
       <div class="details">
-        <p class="house-name">${house.name_boardinghouse}</p>
+        <p class="house-name">${house.name_boardinghouse || house.name || ''}</p>
         <p class="location">📍 ${house.location || ''}</p>
       </div>
       <div class="gender-badge">
@@ -94,7 +64,6 @@ function renderHouse(house) {
   `;
 
   card.addEventListener("click", () => {
-    console.log("[DEBUG] Card clicked:", house.id);
     const uniParam = selectedUniversity || house.university || currentUserUniversity || "";
     if (!uniParam) {
       alert("University not available. Please select your university.");
@@ -104,38 +73,121 @@ function renderHouse(house) {
     window.location.href = `/detail.html?id=${encodeURIComponent(house.id)}${uniQuery}&student_id=${encodeURIComponent(studentId)}`;
   });
 
-  document.getElementById("houseList").appendChild(card);
-  console.log("[DEBUG] Card appended for:", house.name_boardinghouse);
+  houseListEl.appendChild(card);
 }
 
-// Filter buttons
+// Build URL for list endpoints
+function buildListUrl(pageNum = 1) {
+  const filterParam = `&filter=${encodeURIComponent(selectedFilter)}`;
+  const pageParam = `&page=${pageNum}&limit=${limit}`;
+  if (scopedMode && selectedUniversity) {
+    // scoped endpoint
+    return `${baseUrl}/home/scoped?student_id=${encodeURIComponent(studentId)}&university=${encodeURIComponent(selectedUniversity)}${pageParam}${filterParam}`;
+  } else {
+    // default /home endpoint (global or scoped via query)
+    const uniParam = selectedUniversity ? `&university=${encodeURIComponent(selectedUniversity)}` : "";
+    const scopeParam = selectedUniversity ? `&scope=scoped` : `&scope=default`;
+    return `${baseUrl}/home?student_id=${encodeURIComponent(studentId)}${uniParam}${scopeParam}${pageParam}${filterParam}`;
+  }
+}
+
+// Fetch houses (generic)
+async function fetchHouses(refresh = false) {
+  if (isLoading) return;
+  if (refresh) {
+    page = 1;
+    hasMore = true;
+    houseListEl.innerHTML = "";
+    showEmpty(false);
+  }
+  if (!hasMore) return;
+
+  isLoading = true;
+  showLoader(true);
+
+  const url = buildListUrl(page);
+  console.log("[homepage] fetching:", url);
+
+  try {
+    const res = await authorizedGet(url);
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      console.error("[homepage] fetch failed", res.status, data);
+      if (page === 1) showEmpty(true);
+      return;
+    }
+
+    const houses = (data && data.data) ? data.data : [];
+    if (!houses.length && page === 1) {
+      showEmpty(true);
+    } else {
+      houses.forEach(renderHouse);
+      page++;
+      hasMore = houses.length === limit;
+    }
+  } catch (err) {
+    console.error("[homepage] error", err);
+    if (page === 1) showEmpty(true);
+  } finally {
+    isLoading = false;
+    showLoader(false);
+  }
+}
+
+// Event wiring
 document.querySelectorAll(".filter").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    selectedFilter = btn.dataset.filter;
-    console.log("[DEBUG] Filter selected:", selectedFilter);
+    selectedFilter = btn.dataset.filter || "all";
+    page = 1;
+    hasMore = true;
+    houseListEl.innerHTML = "";
     fetchHouses(true);
   });
 });
 
-// University dropdown
-const uniSelect = document.getElementById("universitySelect");
+// University select change (updates selection but does not auto-search)
 if (uniSelect) {
-  uniSelect.addEventListener("change", e => {
-    selectedUniversity = e.target.value;
-    console.log("[DEBUG] University selected:", selectedUniversity);
+  uniSelect.addEventListener("change", (e) => {
+    selectedUniversity = e.target.value || "";
+    // do not trigger fetch automatically — wait for Search click
+    console.log("[homepage] university selected:", selectedUniversity);
+  });
+}
+
+// Search button triggers scoped search when a university is selected
+if (searchBtn) {
+  searchBtn.addEventListener("click", () => {
+    if (!selectedUniversity) {
+      alert("Please select a university first.");
+      return;
+    }
+    scopedMode = true;
+    page = 1;
+    hasMore = true;
+    houseListEl.innerHTML = "";
     fetchHouses(true);
   });
 }
 
-// Infinite scroll
+// Infinite scroll: respects scopedMode and pagination
 window.addEventListener("scroll", () => {
-  if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-    console.log("[DEBUG] Triggering infinite scroll fetch");
-    fetchHouses();
-  }
+  if (isLoading || !hasMore) return;
+  const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 220;
+  if (nearBottom) fetchHouses();
 });
 
-// Initial load
-fetchHouses();
+// Initial load: if user has a saved university, preselect it but do not auto-scope
+(function init() {
+  if (currentUserUniversity && uniSelect) {
+    // try to set select to saved value if present in options
+    const opt = Array.from(uniSelect.options).find(o => o.value === currentUserUniversity);
+    if (opt) {
+      uniSelect.value = currentUserUniversity;
+      selectedUniversity = currentUserUniversity;
+    }
+  }
+  fetchHouses(true);
+})();
