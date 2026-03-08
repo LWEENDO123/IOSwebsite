@@ -1,64 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Kleno Boarding Houses</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
   <style>
-    :root{
-      --accent:#66D4FF;
-      --muted:#666;
-      --card-radius:10px;
-      --shadow: 0 1px 6px rgba(0,0,0,0.08);
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background: #fff;
+      color: #222;
+      -webkit-font-smoothing: antialiased;
     }
 
-    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color:#222;background:#fff;-webkit-font-smoothing:antialiased}
-    .brand-header{background:var(--accent);color:#fff;padding:12px;text-align:center;font-weight:700;position:relative}
-    .brand-header h1{margin:0;font-size:18px}
-    .menu{position:absolute;left:12px;top:12px;font-size:20px;cursor:pointer}
-
-    .controls{
-      display:flex;
-      gap:8px;
-      justify-content:center;
-      align-items:center;
-      padding:12px;
-      background:#fff;
+    .brand-header {
+      background: #66D4FF;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 18px;
+      position: relative;
     }
 
-    select#universitySelect{
-      padding:8px 10px;border-radius:8px;border:1px solid #e6e6e6;font-size:14px;
-      min-width:160px;
+    .menu {
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      font-size: 20px;
+      cursor: pointer;
     }
 
-    button#searchBtn{
-      padding:8px 12px;border-radius:8px;border:none;background:#1e9b3a;color:#fff;font-weight:700;cursor:pointer;
+    .controls {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      padding: 10px;
     }
 
-    .filters{display:flex;gap:8px;justify-content:center;padding:8px}
-    .filter{padding:8px 12px;border-radius:8px;border:none;background:#f0f0f0;cursor:pointer;font-size:13px}
-    .filter.active{background:var(--accent);color:#fff}
+    select {
+      padding: 6px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+    }
 
-    .title{text-align:center;padding:8px}
-    .title h2{margin:0;font-size:16px;font-weight:700}
+    #searchBtn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #66D4FF;
+      color: white;
+      font-size: 13px;
+      font-weight: bold;
+    }
 
-    main#houseList{display:grid;grid-template-columns:1fr;gap:12px;padding:12px}
-    @media(min-width:700px){main#houseList{grid-template-columns:repeat(2,1fr)}}
+    .filters {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      justify-content: center;
+    }
 
-    .house-card{border-radius:var(--card-radius);overflow:hidden;box-shadow:var(--shadow);background:#fff;display:flex;flex-direction:column;cursor:pointer}
-    .house-card img{width:100%;height:140px;object-fit:cover;display:block}
-    .house-card .info{padding:10px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
-    .house-card .details{display:flex;flex-direction:column}
-    .house-name{font-weight:700;margin:0;font-size:14px}
-    .location{font-size:12px;color:var(--muted);margin-top:4px}
+    .filter {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #f0f0f0;
+      font-size: 13px;
+    }
 
-    .gender-badge{background:#fff;border-radius:50%;padding:6px;box-shadow:0 1px 3px rgba(0,0,0,0.12)}
-    .gender-badge img{width:20px;height:20px;object-fit:contain;display:block}
+    .filter.active {
+      background: #66D4FF;
+      color: white;
+    }
 
-    .loader{text-align:center;padding:14px;font-weight:700;color:var(--muted);display:none}
+    .title {
+      padding: 10px;
+      text-align: center;
+    }
 
-    .empty{padding:20px;text-align:center;color:var(--muted)}
+    .title h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .house-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      padding: 10px;
+    }
+
+    @media (min-width: 600px) {
+      .house-list {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .house-card {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .house-card img {
+      width: 100%;
+      height: 140px;
+      object-fit: cover;
+    }
+
+    .house-card .info {
+      padding: 8px;
+      font-size: 13px;
+      background: rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .house-card .details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .house-card .details .house-name {
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .house-card .details .location {
+      font-size: 12px;
+      color: #555;
+      margin: 2px 0 0;
+    }
+
+    .gender-badge {
+      background: #fff;
+      border-radius: 50%;
+      padding: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .gender-badge img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    .loader {
+      text-align: center;
+      padding: 16px;
+      font-weight: bold;
+      font-size: 14px;
+    }
   </style>
 
   <script type="module" src="/static/javascript/homepage.js"></script>
@@ -67,31 +169,30 @@
   <header class="brand-header">
     <div class="menu">☰</div>
     <h1>KLENO Boarding Houses</h1>
+    <div class="controls">
+      <select id="universitySelect">
+        <option value="">My University</option>
+        <option value="CUZM">Cavendish Main Campus</option>
+        <option value="CUZMED">Cavendish Medical Campus</option>
+        <option value="UNILUSM">UNILUS Main Campus</option>
+        <option value="CHRESO">Chreso University</option>
+        <option value="UNZAM">UNZA Main Campus</option>
+      </select>
+      <button id="searchBtn">Search</button>
+    </div>
   </header>
 
-  <div class="controls" role="region" aria-label="Search controls">
-    <select id="universitySelect" aria-label="Select university">
-      <option value="">My University</option>
-      <option value="CUZM">Cavendish Main Campus</option>
-      <option value="CUZMED">Cavendish Medical Campus</option>
-      <option value="UNILUSM">UNILUS Main Campus</option>
-      <option value="CHRESO">Chreso University</option>
-      <option value="UNZAM">UNZA Main Campus</option>
-    </select>
-
-    <button id="searchBtn" aria-label="Search by university">Search</button>
-  </div>
-
-  <div class="filters" role="toolbar" aria-label="Filters">
+  <div class="filters">
     <button class="filter active" data-filter="all">All</button>
     <button class="filter" data-filter="new">New</button>
   </div>
 
-  <div class="title"><h2>Listings</h2></div>
+  <div class="title">
+    <h2>Listings</h2>
+  </div>
 
-  <main id="houseList" aria-live="polite"></main>
+  <main id="houseList" class="house-list"></main>
 
   <div id="loader" class="loader">Loading...</div>
-  <div id="empty" class="empty" style="display:none">No listings found.</div>
 </body>
 </html>
