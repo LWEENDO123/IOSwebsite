@@ -1,3 +1,4 @@
+// detail.js
 import { authorizedGet } from "./tokenManager.js";
 
 console.log("🚀 DETAIL CONTROLLER STARTED");
@@ -15,8 +16,12 @@ let currentSlide = 0;
 let slides = [];
 
 /* ===============================
-   UTILITIES
+   HELPERS
 ================================ */
+
+function isMobile() {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
 
 function safeLog(...args) { try { console.log(...args); } catch (e) {} }
 
@@ -91,6 +96,9 @@ function setButtonLoading(btn, isLoading) {
     @keyframes shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
     .room-card.status-available { border-color: #1e9b3a !important; box-shadow: 0 6px 18px rgba(30,155,58,0.12) !important; }
     .room-card.status-unavailable { border-color: #d32f2f !important; box-shadow: 0 6px 18px rgba(211,47,47,0.12) !important; opacity: 0.95; }
+    .badge-small.available { background: #1e9b3a; }
+    .badge-small.unavailable { background: #d32f2f; }
+    .badge-small.not-supported { background: #666; }
   `;
   document.head.appendChild(style);
 })();
@@ -111,7 +119,6 @@ function validateParams(houseId, university, studentId) {
 
 /* ===============================
    NETWORK DEBUGGER
-   returns parsed JSON or null
 ================================ */
 
 async function debugRequest(url) {
@@ -151,7 +158,6 @@ async function debugRequest(url) {
       console.log("📄 JSON Object:", data);
     } catch (parseError) {
       console.error("❌ JSON Parsing Failed", parseError);
-      // keep data null so callers can handle gracefully
     }
 
     console.groupEnd();
@@ -247,35 +253,27 @@ function createSlide(item) {
 
 /* ===============================
    ROOM STATUS HELPERS
-   - Map backend status strings to normalized tokens
-   - Update legend descriptor text and card visuals
 ================================ */
 
 function normalizeStatus(raw) {
-  if (!raw && raw !== "") return null;
+  if (raw === null || raw === undefined) return null;
   const s = String(raw || "").trim().toLowerCase();
   if (!s) return null;
   if (["available", "vacant", "open"].includes(s)) return "available";
   if (["unavailable", "full", "occupied"].includes(s)) return "unavailable";
   if (["not supported", "not_supported", "n/a", "na"].includes(s)) return "not-supported";
-  return s; // unknown token, treat as not-supported visually
+  return s;
 }
 
 function applyRoomCardVisual(cardEl, statusToken) {
-  // remove previous status classes
   cardEl.classList.remove("status-available", "status-unavailable", "status-not-supported");
-  // apply new
-  if (statusToken === "available") {
-    cardEl.classList.add("status-available");
-  } else if (statusToken === "unavailable") {
-    cardEl.classList.add("status-unavailable");
-  } else {
-    cardEl.classList.add("status-not-supported");
-  }
+  if (statusToken === "available") cardEl.classList.add("status-available");
+  else if (statusToken === "unavailable") cardEl.classList.add("status-unavailable");
+  else cardEl.classList.add("status-not-supported");
 }
 
 /* ===============================
-   ACTIONS: Phone, Google, Yango, Bus
+   ACTIONS
 ================================ */
 
 async function callLandlordPhone(id, uniToSend, studentId, btn) {
@@ -290,11 +288,12 @@ async function callLandlordPhone(id, uniToSend, studentId, btn) {
     const message = phoneData.message ?? null;
 
     if (phone) {
-      try {
+      if (isMobile()) {
+        // Mobile: use location.href to ensure dialer opens
         window.location.href = `tel:${phone}`;
-        try { window.open(`tel:${phone}`); } catch (e) {}
-      } catch (err) {
-        alert(`Landlord phone: ${phone}`);
+      } else {
+        // Desktop: open in new tab/window
+        try { window.open(`tel:${phone}`); } catch (e) { window.location.href = `tel:${phone}`; }
       }
     } else if (message) {
       alert(message);
@@ -314,30 +313,26 @@ async function openGoogleMaps(id, uniToSend, studentId, btn, fallbackLocation) {
   console.group("🗺 GOOGLE MAPS BUTTON");
   setButtonLoading(btn, true);
   try {
-    // get current location for origin (gfrom)
+    // get current location for origin
     let current = null;
-    try {
-      current = await getCurrentLocation();
-    } catch (err) {
-      console.warn("Could not get current location for Google Maps:", err);
-      current = null;
-    }
+    try { current = await getCurrentLocation(); } catch (err) { console.warn("No current location:", err); current = null; }
 
-    // request backend google endpoint (it may return a ready link)
     const googleUrl = `${BASE_URL}/home/google/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}${current ? `&current_lat=${encodeURIComponent(current.lat)}&current_lon=${encodeURIComponent(current.lon)}` : ''}`;
     const gdata = await debugRequest(googleUrl);
     if (!gdata) { alert("Google Maps link unavailable"); return; }
 
-    // prefer backend link if it contains both origin and destination
     const link = gdata.link ?? gdata.url ?? gdata.maps_link ?? null;
-
     if (link) {
-      // quick heuristic: if link already contains origin/destination, open it
-      try { window.open(link, "_blank"); return; } catch (err) { window.location.href = link; return; }
+      if (isMobile()) {
+        // mobile: set location.href to ensure navigation is treated as user gesture
+        window.location.href = link;
+      } else {
+        try { window.open(link, "_blank"); } catch (err) { window.location.href = link; }
+      }
+      return;
     }
 
-    // fallback: construct Google Maps directions URL using current and destination coords
-    // extract destination coords from backend response or fallbackLocation
+    // fallback: construct directions using current and destination coords
     function extractCoords(obj) {
       if (!obj) return null;
       if (Array.isArray(obj) && obj.length >= 2) return { lat: Number(obj[0]), lon: Number(obj[1]) };
@@ -354,18 +349,16 @@ async function openGoogleMaps(id, uniToSend, studentId, btn, fallbackLocation) {
       const origin = `${Number(current.lat)},${Number(current.lon)}`;
       const destination = `${Number(dest.lat)},${Number(dest.lon)}`;
       const constructed = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
-      window.open(constructed, "_blank");
+      if (isMobile()) window.location.href = constructed; else window.open(constructed, "_blank");
       return;
     }
 
-    // if only destination available, open search for destination
     if (dest) {
       const constructed = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${dest.lat},${dest.lon}`)}`;
-      window.open(constructed, "_blank");
+      if (isMobile()) window.location.href = constructed; else window.open(constructed, "_blank");
       return;
     }
 
-    // last resort: open any fallback text link or show message
     alert("Google Maps directions unavailable");
   } catch (err) {
     console.error("Google action error:", err);
@@ -380,21 +373,15 @@ async function openYango(id, uniToSend, studentId, btn, fallbackLocation) {
   console.group("🚗 YANGO BUTTON");
   setButtonLoading(btn, true);
   try {
-    // 1) Try to get current location for gfrom
+    // 1) current location for gfrom
     let current = null;
-    try {
-      current = await getCurrentLocation();
-    } catch (err) {
-      console.warn("Could not get current location:", err);
-      current = null;
-    }
+    try { current = await getCurrentLocation(); } catch (err) { console.warn("No current location:", err); current = null; }
 
-    // 2) Ask backend for Yango data (it may include destination coords or links)
+    // 2) request backend
     const yangoUrl = `${BASE_URL}/home/yango/${encodeURIComponent(id)}?university=${encodeURIComponent(uniToSend)}&student_id=${encodeURIComponent(studentId)}${current ? `&current_lat=${encodeURIComponent(current.lat)}&current_lon=${encodeURIComponent(current.lon)}` : ''}`;
     const ydata = await debugRequest(yangoUrl);
     if (!ydata) { alert("Yango link unavailable"); return; }
 
-    // helper to extract coords from various shapes
     function extractCoords(obj) {
       if (!obj) return null;
       if (Array.isArray(obj) && obj.length >= 2) return { lat: Number(obj[0]), lon: Number(obj[1]) };
@@ -410,45 +397,49 @@ async function openYango(id, uniToSend, studentId, btn, fallbackLocation) {
     const destFromPayload = extractCoords(fallbackLocation ?? null);
     const dest = destFromYangoCoords || destFromGPS || destFromPayload || null;
 
-    // Prefer backend-provided browser_link if it already contains both gfrom and gto
     const browserLink = ydata.browser_link ?? ydata.browserLink ?? ydata.browser ?? ydata.url ?? null;
+    const deep = ydata.deep_link ?? ydata.deepLink ?? ydata.deep ?? null;
+    const tariff = encodeURIComponent(ydata.tariff ?? "econom");
+    const lang = encodeURIComponent(ydata.lang ?? "en_int");
+
+    // If backend provided a browser link that already contains both gfrom & gto, prefer it
     if (browserLink && current && dest) {
       const hasFrom = browserLink.includes("gfrom=");
       const hasTo = browserLink.includes("gto=");
       if (hasFrom && hasTo) {
-        console.log("🚗 Opening backend browser_link (contains gfrom & gto):", browserLink);
-        window.open(browserLink, "_blank");
+        if (isMobile()) window.location.href = browserLink; else window.open(browserLink, "_blank");
         return;
       }
     }
 
-    // Build constructed Yango browser order URL using current location and destination
-    const tariff = encodeURIComponent(ydata.tariff ?? "econom");
-    const lang = encodeURIComponent(ydata.lang ?? "en_int");
-
+    // Constructed link using current and dest
     if (current && dest) {
       const gfrom = `${Number(current.lat)},${Number(current.lon)}`;
       const gto = `${Number(dest.lat)},${Number(dest.lon)}`;
       const constructed = `https://yango.com/${lang}/order/?gfrom=${encodeURIComponent(gfrom)}&gto=${encodeURIComponent(gto)}&tariff=${tariff}&lang=${lang}`;
-      console.log("🚗 Opening constructed Yango browser link:", constructed);
-      window.open(constructed, "_blank");
+      if (isMobile()) window.location.href = constructed; else window.open(constructed, "_blank");
       return;
     }
 
-    // If we only have destination, open destination-only link
+    // If only destination available
     if (!current && dest) {
       const gto = `${Number(dest.lat)},${Number(dest.lon)}`;
       const constructed = `https://yango.com/${lang}/order/?gto=${encodeURIComponent(gto)}&tariff=${tariff}&lang=${lang}`;
-      console.log("🚗 Opening Yango link with destination only:", constructed);
-      window.open(constructed, "_blank");
+      if (isMobile()) window.location.href = constructed; else window.open(constructed, "_blank");
       return;
     }
 
-    // Fallback: open deep link (may trigger app on mobile) or show message
-    const deep = ydata.deep_link ?? ydata.deepLink ?? ydata.deep ?? null;
+    // Fallback to deep link (mobile may handle)
     if (deep) {
-      console.log("🚗 Opening deep link (mobile may handle):", deep);
-      try { window.open(deep, "_blank"); } catch (err) { alert(`Yango link: ${deep}`); }
+      if (isMobile()) window.location.href = deep; else {
+        try { window.open(deep, "_blank"); } catch (err) { alert(`Yango link: ${deep}`); }
+      }
+      return;
+    }
+
+    // Last resort: open browserLink or show message
+    if (browserLink) {
+      if (isMobile()) window.location.href = browserLink; else window.open(browserLink, "_blank");
       return;
     }
 
@@ -475,10 +466,10 @@ async function openBus(id, uniToSend, studentId, btn) {
 
     if (lat && lon) {
       const mapsQuery = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`;
-      window.open(mapsQuery, "_blank");
+      if (isMobile()) window.location.href = mapsQuery; else window.open(mapsQuery, "_blank");
     } else if (sdata.location) {
       const mapsQuery = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sdata.location)}`;
-      window.open(mapsQuery, "_blank");
+      if (isMobile()) window.location.href = mapsQuery; else window.open(mapsQuery, "_blank");
     } else {
       alert("Bus stop or location not available");
     }
@@ -629,10 +620,9 @@ async function loadBoardingHouse(id, university, studentId) {
       });
     }
 
-    // Update legend descriptor (mirrors Dart's room status descriptions)
+    // Legend descriptor (mirrors Dart)
     const legendContainer = document.querySelector(".legend");
     if (legendContainer) {
-      // ensure descriptor block exists
       let descBlock = document.querySelector(".legend-descriptions");
       if (!descBlock) {
         descBlock = document.createElement("div");
@@ -685,7 +675,6 @@ async function loadBoardingHouse(id, university, studentId) {
         typeP.className = "room-type";
         typeP.textContent = r.type;
 
-        // normalize status and set badge text + visual
         const rawStatus = r.status ?? "";
         const statusToken = normalizeStatus(rawStatus);
         const badge = document.createElement("span");
@@ -707,13 +696,9 @@ async function loadBoardingHouse(id, university, studentId) {
         grid.appendChild(card);
 
         // apply card visual highlight based on status
-        if (statusToken === "available") {
-          applyRoomCardVisual(card, "available");
-        } else if (statusToken === "unavailable") {
-          applyRoomCardVisual(card, "unavailable");
-        } else {
-          applyRoomCardVisual(card, "not-supported");
-        }
+        if (statusToken === "available") applyRoomCardVisual(card, "available");
+        else if (statusToken === "unavailable") applyRoomCardVisual(card, "unavailable");
+        else applyRoomCardVisual(card, "not-supported");
       });
     }
 
