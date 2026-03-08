@@ -1,6 +1,14 @@
 // /static/javascript/homepage.js
 import { authorizedGet } from "./tokenManager.js";
 
+/*
+  Full homepage controller
+  - Keeps original image URL behavior (no normalization that prepends https)
+  - Adds Search button to trigger scoped endpoint (/home/scoped)
+  - Supports filters, pagination, infinite scroll
+  - Minimal DOM assumptions: #houseList, #loader, #universitySelect, #searchBtn, .filter
+*/
+
 const baseUrl = "https://klenoboardinghouse-production.up.railway.app";
 const studentId = localStorage.getItem("user_id") || "";
 const currentUserUniversity = localStorage.getItem("user_university") || "";
@@ -11,29 +19,15 @@ let hasMore = true;
 let isLoading = false;
 let selectedFilter = "all";
 let selectedUniversity = "";
-let scopedMode = false; // when true use /home/scoped
+let scopedMode = false; // when true, use /home/scoped endpoint
 
-// DOM
+// DOM refs
 const houseListEl = document.getElementById("houseList");
 const loaderEl = document.getElementById("loader");
-const emptyEl = document.getElementById("empty");
 const uniSelect = document.getElementById("universitySelect");
 const searchBtn = document.getElementById("searchBtn");
 
-// Helpers
-function showLoader(show = true) {
-  loaderEl.style.display = show ? "block" : "none";
-}
-function showEmpty(show = true) {
-  emptyEl.style.display = show ? "block" : "none";
-}
-function normalizeImageUrl(url) {
-  if (!url) return "https://via.placeholder.com/400x200";
-  const s = String(url).trim();
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
-  if (s.startsWith("/")) return s;
-  return s;
-}
+// Helper: pick correct gender icon (keeps your original paths)
 function getGenderIcon(gender) {
   const g = (gender || "").toLowerCase();
   if (g === "male") return "/static/assets/icons/male.png";
@@ -42,12 +36,19 @@ function getGenderIcon(gender) {
   return "/static/assets/icons/both.png";
 }
 
-// Render single house card
+// Show/hide loader
+function showLoader(show) {
+  if (!loaderEl) return;
+  loaderEl.style.display = show ? "block" : "none";
+}
+
+// Render a single house card (keeps image URL exactly as returned by backend)
 function renderHouse(house) {
   const card = document.createElement("div");
   card.className = "house-card";
 
-  const coverImage = normalizeImageUrl(house.cover_image || house.image || house.coverImage);
+  // Keep original image usage: do not alter or prepend protocol
+  const coverImage = house.cover_image || house.image || "https://via.placeholder.com/400x200";
   const genderIcon = getGenderIcon(house.gender);
 
   card.innerHTML = `
@@ -64,6 +65,7 @@ function renderHouse(house) {
   `;
 
   card.addEventListener("click", () => {
+    console.log("[DEBUG] Card clicked:", house.id);
     const uniParam = selectedUniversity || house.university || currentUserUniversity || "";
     if (!uniParam) {
       alert("University not available. Please select your university.");
@@ -74,31 +76,30 @@ function renderHouse(house) {
   });
 
   houseListEl.appendChild(card);
+  console.log("[DEBUG] Card appended for:", house.name_boardinghouse || house.name);
 }
 
-// Build URL for list endpoints
+// Build list URL depending on scopedMode and selectedUniversity
 function buildListUrl(pageNum = 1) {
-  const filterParam = `&filter=${encodeURIComponent(selectedFilter)}`;
   const pageParam = `&page=${pageNum}&limit=${limit}`;
+  const filterParam = `&filter=${encodeURIComponent(selectedFilter)}`;
+
   if (scopedMode && selectedUniversity) {
-    // scoped endpoint
     return `${baseUrl}/home/scoped?student_id=${encodeURIComponent(studentId)}&university=${encodeURIComponent(selectedUniversity)}${pageParam}${filterParam}`;
-  } else {
-    // default /home endpoint (global or scoped via query)
-    const uniParam = selectedUniversity ? `&university=${encodeURIComponent(selectedUniversity)}` : "";
-    const scopeParam = selectedUniversity ? `&scope=scoped` : `&scope=default`;
-    return `${baseUrl}/home?student_id=${encodeURIComponent(studentId)}${uniParam}${scopeParam}${pageParam}${filterParam}`;
   }
+
+  const uniParam = selectedUniversity ? `&university=${encodeURIComponent(selectedUniversity)}` : "";
+  const scopeParam = selectedUniversity ? `&scope=scoped` : `&scope=default`;
+  return `${baseUrl}/home?student_id=${encodeURIComponent(studentId)}${uniParam}${scopeParam}${pageParam}${filterParam}`;
 }
 
-// Fetch houses (generic)
+// Fetch houses (respects scopedMode)
 async function fetchHouses(refresh = false) {
   if (isLoading) return;
   if (refresh) {
     page = 1;
     hasMore = true;
-    houseListEl.innerHTML = "";
-    showEmpty(false);
+    if (houseListEl) houseListEl.innerHTML = "";
   }
   if (!hasMore) return;
 
@@ -106,44 +107,55 @@ async function fetchHouses(refresh = false) {
   showLoader(true);
 
   const url = buildListUrl(page);
-  console.log("[homepage] fetching:", url);
+  console.log("[DEBUG] Fetching houses from:", url);
 
   try {
     const res = await authorizedGet(url);
     const data = await res.json().catch(() => null);
 
     if (!res.ok) {
-      console.error("[homepage] fetch failed", res.status, data);
-      if (page === 1) showEmpty(true);
+      console.error("[DEBUG] Failed response:", res.status, data);
+      if (page === 1 && houseListEl) houseListEl.innerHTML = `<div class="loader">No listings found.</div>`;
       return;
     }
 
     const houses = (data && data.data) ? data.data : [];
     if (!houses.length && page === 1) {
-      showEmpty(true);
-    } else {
-      houses.forEach(renderHouse);
-      page++;
-      hasMore = houses.length === limit;
+      if (houseListEl) houseListEl.innerHTML = `<div class="loader">No listings found.</div>`;
+      hasMore = false;
+      return;
     }
+
+    houses.forEach(renderHouse);
+    page++;
+    hasMore = houses.length === limit;
+    console.log("[DEBUG] hasMore:", hasMore, "next page:", page);
   } catch (err) {
-    console.error("[homepage] error", err);
-    if (page === 1) showEmpty(true);
+    console.error("[DEBUG] Error fetching houses:", err);
+    if (page === 1 && houseListEl) houseListEl.innerHTML = `<div class="loader">Error loading listings.</div>`;
   } finally {
     isLoading = false;
     showLoader(false);
   }
 }
 
-// Event wiring
+// Fetch scoped houses explicitly (wrapper that sets scopedMode true)
+async function fetchScopedHouses(refresh = false) {
+  scopedMode = true;
+  await fetchHouses(refresh);
+}
+
+// Wire up filter buttons
 document.querySelectorAll(".filter").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     selectedFilter = btn.dataset.filter || "all";
+    console.log("[DEBUG] Filter selected:", selectedFilter);
+    // Reset pagination and fetch
     page = 1;
     hasMore = true;
-    houseListEl.innerHTML = "";
+    if (houseListEl) houseListEl.innerHTML = "";
     fetchHouses(true);
   });
 });
@@ -152,8 +164,8 @@ document.querySelectorAll(".filter").forEach(btn => {
 if (uniSelect) {
   uniSelect.addEventListener("change", (e) => {
     selectedUniversity = e.target.value || "";
-    // do not trigger fetch automatically — wait for Search click
-    console.log("[homepage] university selected:", selectedUniversity);
+    console.log("[DEBUG] University selected:", selectedUniversity);
+    // Do not auto-trigger fetch here; wait for Search click
   });
 }
 
@@ -164,30 +176,33 @@ if (searchBtn) {
       alert("Please select a university first.");
       return;
     }
-    scopedMode = true;
+    console.log("[DEBUG] Search clicked, using scoped endpoint for:", selectedUniversity);
     page = 1;
     hasMore = true;
-    houseListEl.innerHTML = "";
-    fetchHouses(true);
+    if (houseListEl) houseListEl.innerHTML = "";
+    fetchScopedHouses(true);
   });
 }
 
-// Infinite scroll: respects scopedMode and pagination
+// Infinite scroll: respects scopedMode
 window.addEventListener("scroll", () => {
   if (isLoading || !hasMore) return;
   const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 220;
-  if (nearBottom) fetchHouses();
+  if (nearBottom) {
+    if (scopedMode && selectedUniversity) fetchScopedHouses();
+    else fetchHouses();
+  }
 });
 
-// Initial load: if user has a saved university, preselect it but do not auto-scope
+// Initial load: preselect saved university if present, then fetch
 (function init() {
   if (currentUserUniversity && uniSelect) {
-    // try to set select to saved value if present in options
     const opt = Array.from(uniSelect.options).find(o => o.value === currentUserUniversity);
     if (opt) {
       uniSelect.value = currentUserUniversity;
       selectedUniversity = currentUserUniversity;
     }
   }
+  // Start with global/home endpoint by default
   fetchHouses(true);
 })();
