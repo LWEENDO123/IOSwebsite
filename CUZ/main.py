@@ -40,6 +40,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Mount static folder (CSS, JS, favicon)
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+app.mount("/CUZ", StaticFiles(directory=os.path.join(BASE_DIR, "CUZ")), name="cuz")
+
 
 
 
