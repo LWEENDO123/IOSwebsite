@@ -35,12 +35,12 @@ signupForm.addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      messageEl.textContent = "Signup successful! Redirecting...";
+      messageEl.textContent = "Signup successful! Redirecting to login...";
       messageEl.classList.add("success");
 
-      // Redirect to homepage after short delay
+      // Redirect to login.html after short delay
       setTimeout(() => {
-        window.location.href = "login";
+        window.location.href = "login.html";
       }, 1500);
     } else {
       let errorMsg = "Signup failed.";
