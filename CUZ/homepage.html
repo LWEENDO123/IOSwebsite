@@ -17,11 +17,21 @@
     .brand-header {
       background: #66D4FF;
       color: white;
-      padding: 10px;
-      text-align: center;
+      padding: 10px 12px;
       font-weight: 600;
       font-size: 18px;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .brand-header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
     }
 
     .menu {
@@ -32,6 +42,33 @@
       cursor: pointer;
       text-decoration: none;
       color: white;
+    }
+
+    /* Upgrade button at top-right */
+    .upgrade-btn {
+      position: absolute;
+      right: 12px;
+      top: 8px;
+      background: white;
+      color: #06627a;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 700;
+      font-size: 13px;
+      text-decoration: none;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .upgrade-badge {
+      background: #FFDD57;
+      color: #222;
+      padding: 4px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .controls {
@@ -48,15 +85,17 @@
       font-size: 14px;
     }
 
+    /* Search button: white with subtle border */
     #searchBtn {
       padding: 6px 12px;
       border-radius: 8px;
-      border: none;
+      border: 1px solid rgba(0,0,0,0.08);
       cursor: pointer;
-      background: #66D4FF;
-      color: white;
+      background: white;
+      color: #222;
       font-size: 13px;
-      font-weight: bold;
+      font-weight: 700;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     }
 
     .filters {
@@ -171,19 +210,27 @@
   <header class="brand-header">
     <!-- Menu button now links to payment_page.html -->
     <a href="/CUZ/payment_page.html" class="menu" title="Go to Payment Page">☰</a>
+
     <h1>KLENO Boarding Houses</h1>
-    <div class="controls">
-      <select id="universitySelect">
-        <option value="">My University</option>
-        <option value="CUZM">Cavendish Main Campus</option>
-        <option value="CUZMED">Cavendish Medical Campus</option>
-        <option value="UNILUSM">UNILUS Main Campus</option>
-        <option value="CHRESO">Chreso University</option>
-        <option value="UNZAM">UNZA Main Campus</option>
-      </select>
-      <button id="searchBtn">Search</button>
-    </div>
+
+    <!-- Upgrade plan button top-right -->
+    <a href="/CUZ/payment_page.html" class="upgrade-btn" title="Upgrade plan">
+      <span class="upgrade-badge">PRO</span>
+      <span>Upgrade Plan</span>
+    </a>
   </header>
+
+  <div class="controls">
+    <select id="universitySelect">
+      <option value="">My University</option>
+      <option value="CUZM">Cavendish Main Campus</option>
+      <option value="CUZMED">Cavendish Medical Campus</option>
+      <option value="UNILUSM">UNILUS Main Campus</option>
+      <option value="CHRESO">Chreso University</option>
+      <option value="UNZAM">UNZA Main Campus</option>
+    </select>
+    <button id="searchBtn">Search</button>
+  </div>
 
   <div class="filters">
     <button class="filter active" data-filter="all">All</button>
