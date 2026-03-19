@@ -1,9 +1,8 @@
-// /static/javascript/homepage.js
 import { authorizedGet } from "./tokenManager.js";
 
 /*
   Full homepage controller
-  - Keeps original image URL behavior (no normalization that prepends https)
+  - Normalizes image URLs to ensure they resolve correctly
   - Adds Search button to trigger scoped endpoint (/home/scoped)
   - Supports filters, pagination, infinite scroll
   - Minimal DOM assumptions: #houseList, #loader, #universitySelect, #searchBtn, .filter
@@ -27,7 +26,7 @@ const loaderEl = document.getElementById("loader");
 const uniSelect = document.getElementById("universitySelect");
 const searchBtn = document.getElementById("searchBtn");
 
-// Helper: pick correct gender icon (keeps your original paths)
+// Helper: pick correct gender icon
 function getGenderIcon(gender) {
   const g = (gender || "").toLowerCase();
   if (g === "male") return "/static/assets/icons/male.png";
@@ -36,19 +35,25 @@ function getGenderIcon(gender) {
   return "/static/assets/icons/both.png";
 }
 
+// Helper: normalize image URLs
+function normalizeImageUrl(url) {
+  if (!url) return "https://via.placeholder.com/400x200";
+  if (url.startsWith("http")) return url;
+  return `${baseUrl}${url}`;
+}
+
 // Show/hide loader
 function showLoader(show) {
   if (!loaderEl) return;
   loaderEl.style.display = show ? "block" : "none";
 }
 
-// Render a single house card (keeps image URL exactly as returned by backend)
+// Render a single house card
 function renderHouse(house) {
   const card = document.createElement("div");
   card.className = "house-card";
 
-  // Keep original image usage: do not alter or prepend protocol
-  const coverImage = house.cover_image || house.image || "https://via.placeholder.com/400x200";
+  const coverImage = normalizeImageUrl(house.cover_image || house.image);
   const genderIcon = getGenderIcon(house.gender);
 
   card.innerHTML = `
@@ -93,7 +98,7 @@ function buildListUrl(pageNum = 1) {
   return `${baseUrl}/home?student_id=${encodeURIComponent(studentId)}${uniParam}${scopeParam}${pageParam}${filterParam}`;
 }
 
-// Fetch houses (respects scopedMode)
+// Fetch houses
 async function fetchHouses(refresh = false) {
   if (isLoading) return;
   if (refresh) {
@@ -139,7 +144,7 @@ async function fetchHouses(refresh = false) {
   }
 }
 
-// Fetch scoped houses explicitly (wrapper that sets scopedMode true)
+// Fetch scoped houses
 async function fetchScopedHouses(refresh = false) {
   scopedMode = true;
   await fetchHouses(refresh);
@@ -152,7 +157,6 @@ document.querySelectorAll(".filter").forEach(btn => {
     btn.classList.add("active");
     selectedFilter = btn.dataset.filter || "all";
     console.log("[DEBUG] Filter selected:", selectedFilter);
-    // Reset pagination and fetch
     page = 1;
     hasMore = true;
     if (houseListEl) houseListEl.innerHTML = "";
@@ -160,16 +164,15 @@ document.querySelectorAll(".filter").forEach(btn => {
   });
 });
 
-// University select change (updates selection but does not auto-search)
+// University select change
 if (uniSelect) {
   uniSelect.addEventListener("change", (e) => {
     selectedUniversity = e.target.value || "";
     console.log("[DEBUG] University selected:", selectedUniversity);
-    // Do not auto-trigger fetch here; wait for Search click
   });
 }
 
-// Search button triggers scoped search when a university is selected
+// Search button
 if (searchBtn) {
   searchBtn.addEventListener("click", () => {
     if (!selectedUniversity) {
@@ -184,7 +187,7 @@ if (searchBtn) {
   });
 }
 
-// Infinite scroll: respects scopedMode
+// Infinite scroll
 window.addEventListener("scroll", () => {
   if (isLoading || !hasMore) return;
   const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 220;
@@ -194,7 +197,7 @@ window.addEventListener("scroll", () => {
   }
 });
 
-// Initial load: preselect saved university if present, then fetch
+// Initial load
 (function init() {
   if (currentUserUniversity && uniSelect) {
     const opt = Array.from(uniSelect.options).find(o => o.value === currentUserUniversity);
@@ -203,6 +206,5 @@ window.addEventListener("scroll", () => {
       selectedUniversity = currentUserUniversity;
     }
   }
-  // Start with global/home endpoint by default
   fetchHouses(true);
 })();
