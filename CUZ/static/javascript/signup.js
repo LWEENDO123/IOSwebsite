@@ -1,4 +1,8 @@
-document.getElementById("signupForm").addEventListener("submit", async (e) => {
+const signupForm = document.getElementById("signupForm");
+const signupBtn = document.getElementById("signupBtn");
+const messageEl = document.getElementById("message");
+
+signupForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const body = {
@@ -10,9 +14,13 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
     university: document.getElementById("university").value.trim(),
   };
 
-  const messageEl = document.getElementById("message");
+  // Reset message
   messageEl.textContent = "";
-  messageEl.className = "message"; // reset styling
+  messageEl.className = "message";
+
+  // Show loading state
+  signupBtn.disabled = true;
+  signupBtn.innerHTML = `<span class="spinner"></span> Signing Up...`;
 
   try {
     const res = await fetch("https://klenoboardinghouse-production.up.railway.app/users/student_signup", {
@@ -27,16 +35,14 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({}));
 
     if (res.ok) {
-      // Backend returns access_token + user_id
-      messageEl.textContent = "Signup successful! You can now login.";
+      messageEl.textContent = "Signup successful! Redirecting...";
       messageEl.classList.add("success");
 
-      // Redirect after short delay
+      // Redirect to homepage after short delay
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "homepage";
       }, 1500);
     } else {
-      // Handle backend error details
       let errorMsg = "Signup failed.";
       if (data.detail) {
         errorMsg = data.detail;
@@ -49,5 +55,9 @@ document.getElementById("signupForm").addEventListener("submit", async (e) => {
   } catch (err) {
     messageEl.textContent = "Network error: " + err.message;
     messageEl.classList.add("error");
+  } finally {
+    // Reset button state
+    signupBtn.disabled = false;
+    signupBtn.textContent = "Sign Up";
   }
 });
