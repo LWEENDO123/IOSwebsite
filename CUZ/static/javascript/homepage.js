@@ -39,6 +39,10 @@ function getGenderIcon(gender) {
 function normalizeImageUrl(url) {
   if (!url) return "https://via.placeholder.com/400x200";
   if (url.startsWith("http")) return url;
+  // Ensure path starts with /media/
+  if (!url.startsWith("/media/")) {
+    return `${baseUrl}/media/${url.replace(/^\/+/, "")}`;
+  }
   return `${baseUrl}${url}`;
 }
 
