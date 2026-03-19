@@ -1,12 +1,12 @@
-// /static/javascript/premium.js
+// /static/javascript/payment_page.js
 import { authorizedGet, authorizedPost } from "./tokenManager.js";
 
 /*
-  Mirrors Dart PremiumPaymentPage behavior:
+  Payment page script
   - Loads stored phone via GET /payments/{student_id}/phone?university={university}
   - Normalizes phone to +260 format
   - Detects operator; only Airtel allowed
-  - Posts to POST /payments/collect/mobile-money
+  - Posts to POST /payments/collect/mobile-money (includes student_id + university)
   - Shows friendly messages and debug output
 */
 
@@ -24,7 +24,7 @@ const debugEl = document.getElementById("debug");
 let storedPhoneNumber = null;
 let useStoredNumber = true;
 
-// Normalize phone to +260 format (same logic as Dart)
+// Normalize phone to +260 format
 function normalizePhone(phone) {
   if (!phone) return phone;
   const s = String(phone).trim();
@@ -34,7 +34,7 @@ function normalizePhone(phone) {
   return `+260${s}`;
 }
 
-// Detect operator (mirrors Dart)
+// Detect operator (basic prefixes)
 function detectOperator(msisdn) {
   if (!msisdn) return "airtel";
   const digits = String(msisdn).replace(/\D/g, "");
@@ -97,6 +97,7 @@ async function loadStoredPhone() {
 }
 
 function renderStoredPhone() {
+  if (!storedPhoneContainer) return;
   storedPhoneContainer.innerHTML = "";
   if (storedPhoneNumber) {
     const wrapper = document.createElement("div");
@@ -158,11 +159,10 @@ function renderStoredPhone() {
 async function pay() {
   setLoading(true);
   showMessage("", "info");
-  debugEl.style.display = "none";
-  debugEl.textContent = "";
+  if (debugEl) { debugEl.style.display = "none"; debugEl.textContent = ""; }
 
   try {
-    const chosen = useStoredNumber && storedPhoneNumber ? storedPhoneNumber : phoneInput.value.trim();
+    const chosen = useStoredNumber && storedPhoneNumber ? storedPhoneNumber : (phoneInput.value || "").trim();
     if (!chosen) {
       showMessage("Please provide a mobile money number.", "error");
       setLoading(false);
@@ -179,8 +179,15 @@ async function pay() {
       return;
     }
 
+    if (!studentId) {
+      showMessage("❌ Missing user session. Please login and try again.", "error");
+      setLoading(false);
+      return;
+    }
+
     const payload = {
-      university: university || "",
+      student_id: studentId,           // required by backend
+      university: university || "",    // required by backend
       operator: operator,
       bearer: "merchant",
       phone: normalized,
@@ -190,14 +197,19 @@ async function pay() {
 
     const endpoint = `${baseUrl}/payments/collect/mobile-money`;
 
+    // Prefer authorizedPost (adds auth headers). Fallback to fetch with token if needed.
     let res;
     try {
       res = await authorizedPost(endpoint, payload);
     } catch (err) {
-      // fallback to fetch if authorizedPost not available
+      console.warn("authorizedPost failed, falling back to fetch:", err);
+      const token = localStorage.getItem("access_token") || "";
       res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
     }
@@ -210,8 +222,12 @@ async function pay() {
       showMessage("✅ Payment request sent. Confirm on your phone.", "success");
       showDebug("Payment Sent", statusCode, body);
     } else if (statusCode === 422) {
+      const detail = (body && body.detail) ? body.detail : body;
       showMessage("❌ Payment failed: invalid request data. Please confirm your phone number and try again.", "error");
-      showDebug("Payment Failed (422)", statusCode, body);
+      showDebug("Payment Failed (422) Validation details", statusCode, detail);
+    } else if (statusCode >= 400 && statusCode < 500) {
+      showMessage(`❌ Payment failed (status ${statusCode}). Please check your input.`, "error");
+      showDebug("Payment Client Error", statusCode, body);
     } else if (statusCode >= 500) {
       showMessage("❌ Payment provider error. Please try again later.", "error");
       showDebug("Payment Error", statusCode, body);
@@ -222,20 +238,23 @@ async function pay() {
   } catch (err) {
     console.error("Payment exception:", err);
     showMessage(`❌ Internal error: ${err}`, "error");
+    if (debugEl) showDebug("Exception", "exception", String(err));
   } finally {
     setLoading(false);
   }
 }
 
 // Wire events
-payBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  pay();
-});
+if (payBtn) {
+  payBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    pay();
+  });
+}
 
 // Initialize
 (async function init() {
-  operatorSelect.value = "auto";
+  if (operatorSelect) operatorSelect.value = "auto";
   await loadStoredPhone();
   renderStoredPhone();
 })();
