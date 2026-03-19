@@ -4,16 +4,131 @@
   <meta charset="UTF-8">
   <title>Kleno Signup</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <!-- CSS is in the same folder as signup.html -->
-  <link rel="stylesheet" href="style.css">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      background: #fff;
+      color: #222;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .brand {
+      font-size: 32px;
+      color: #66D4FF;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    input, select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .password-group {
+      display: flex;
+      align-items: center;
+    }
+
+    .password-group input {
+      flex: 1;
+    }
+
+    .toggle-btn {
+      margin-left: 8px;
+      padding: 8px 12px;
+      border: none;
+      background: #66D4FF;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    #signupBtn {
+      width: 100%;
+      padding: 12px;
+      background: #66D4FF;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #signupBtn:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .message {
+      text-align: center;
+      margin: 10px 0;
+      font-size: 14px;
+    }
+
+    .message.success { color: green; }
+    .message.error { color: red; }
+
+    .login-link {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .spinner {
+      border: 2px solid #fff;
+      border-top: 2px solid #66D4FF;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-    <!-- Branding -->
     <h1 class="brand">KLENO</h1>
     <h2 class="subtitle">Create your account</h2>
 
-    <!-- Signup Form -->
     <form id="signupForm">
       <div class="form-group">
         <label for="first_name">First Name</label>
@@ -30,7 +145,6 @@
         <input type="email" id="email" name="email" required>
       </div>
 
-      <!-- Password with toggle -->
       <div class="form-group password-group">
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required minlength="8" maxlength="64">
@@ -54,23 +168,19 @@
         </select>
       </div>
 
-      <!-- Error / Success messages -->
       <p id="message" class="message"></p>
 
-      <!-- Submit button -->
       <button type="submit" id="signupBtn">Sign Up</button>
     </form>
 
-    <!-- Login link -->
     <p class="login-link">
       Already have an account? <a href="login.html">Login</a>
     </p>
   </div>
 
-  <!-- JS is in ../javascript/static/signup.js -->
+  <!-- Correct JS path -->
   <script src="../javascript/static/signup.js"></script>
   <script>
-    // Password toggle logic
     const togglePassword = document.getElementById("togglePassword");
     const passwordInput = document.getElementById("password");
     togglePassword.addEventListener("click", () => {
