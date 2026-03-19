@@ -40,7 +40,7 @@ signupForm.addEventListener("submit", async (e) => {
 
       // Redirect to homepage after short delay
       setTimeout(() => {
-        window.location.href = "homepage";
+        window.location.href = "login";
       }, 1500);
     } else {
       let errorMsg = "Signup failed.";
