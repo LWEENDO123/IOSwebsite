@@ -8,30 +8,74 @@
 </head>
 <body>
   <div class="container">
-    <h1>KLENO</h1>
-    <h2>Create your account</h2>
+    <!-- Branding -->
+    <h1 class="brand">KLENO</h1>
+    <h2 class="subtitle">Create your account</h2>
 
+    <!-- Signup Form -->
     <form id="signupForm">
-      <input type="text" id="first_name" placeholder="First Name" required>
-      <input type="text" id="last_name" placeholder="Last Name" required>
-      <input type="email" id="email" placeholder="Email" required>
-      <input type="password" id="password" placeholder="Password" required>
-      <input type="tel" id="phone_number" placeholder="Phone Number" required>
-      <select id="university" required>
-        <option value="">Choose University</option>
-        <option value="CUZM">Cavendish Main Campus</option>
-        <option value="CUZMED">Cavendish Medical Campus</option>
-        <option value="UNILUSM">UNILUS Main Campus</option>
-        <option value="CHRESO">Chreso University</option>
-        <option value="UNZA">UNZA Main Campus</option>
-      </select>
-      <button type="submit">Sign Up</button>
+      <div class="form-group">
+        <label for="first_name">First Name</label>
+        <input type="text" id="first_name" name="first_name" required minlength="2" maxlength="15" pattern="[A-Za-z ]+">
+      </div>
+
+      <div class="form-group">
+        <label for="last_name">Last Name</label>
+        <input type="text" id="last_name" name="last_name" required minlength="2" maxlength="15" pattern="[A-Za-z ]+">
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+
+      <!-- Password with toggle -->
+      <div class="form-group password-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="8" maxlength="64">
+        <button type="button" id="togglePassword" class="toggle-btn">Show</button>
+      </div>
+
+      <div class="form-group">
+        <label for="phone_number">Phone Number</label>
+        <input type="tel" id="phone_number" name="phone_number" required pattern="[0-9]{7,15}">
+      </div>
+
+      <div class="form-group">
+        <label for="university">University</label>
+        <select id="university" name="university" required>
+          <option value="">Choose University</option>
+          <option value="CUZM">Cavendish Main Campus</option>
+          <option value="CUZMED">Cavendish Medical Campus</option>
+          <option value="UNILUSM">UNILUS Main Campus</option>
+          <option value="CHRESO">Chreso University</option>
+          <option value="UNZA">UNZA Main Campus</option>
+        </select>
+      </div>
+
+      <!-- Error / Success messages -->
+      <p id="message" class="message"></p>
+
+      <!-- Submit button -->
+      <button type="submit" id="signupBtn">Sign Up</button>
     </form>
 
-    <p id="message"></p>
-    <p>Already have an account? <a href="login.html">Login</a></p>
+    <!-- Login link -->
+    <p class="login-link">
+      Already have an account? <a href="login.html">Login</a>
+    </p>
   </div>
 
   <script src="javascript/signup.js"></script>
+  <script>
+    // Password toggle logic
+    const togglePassword = document.getElementById("togglePassword");
+    const passwordInput = document.getElementById("password");
+    togglePassword.addEventListener("click", () => {
+      const type = passwordInput.getAttribute("type") === "password" ? "text" : "password";
+      passwordInput.setAttribute("type", type);
+      togglePassword.textContent = type === "password" ? "Show" : "Hide";
+    });
+  </script>
 </body>
 </html>
