@@ -25,7 +25,7 @@ function setButtonLoading(btn, loading) {
 }
 
 /* ===============================
-   FETCH DATA
+   FETCH DATA + PREMIUM CHECK
 ================================ */
 async function loadBoardingHouse() {
   try {
@@ -34,6 +34,16 @@ async function loadBoardingHouse() {
 
     console.log("🏠 DATA:", data);
 
+    // ✅ PREMIUM CHECK
+    if (data.premium === false) {
+      console.warn("🚫 Not premium → redirecting");
+
+      localStorage.setItem("redirect_after_payment", window.location.href);
+      window.location.href = "/static/payment.html";
+      return;
+    }
+
+    // ✅ Continue normally
     renderGallery(data.gallery || []);
     attachActions(data);
 
@@ -43,19 +53,19 @@ async function loadBoardingHouse() {
 }
 
 /* ===============================
-   GALLERY (MODERN + NO STRETCH)
+   GALLERY (MODERN FIXED)
 ================================ */
 function renderGallery(gallery) {
   const container = document.getElementById("imageSlider");
-  container.innerHTML = "";
+  if (!container) return;
 
+  container.innerHTML = "";
   galleryData = gallery;
 
   gallery.forEach((item, index) => {
     const img = document.createElement("img");
     img.src = item.url;
 
-    // ✅ FIX STRETCHING
     img.style.width = "100%";
     img.style.height = "100%";
     img.style.objectFit = "cover";
@@ -68,14 +78,12 @@ function renderGallery(gallery) {
 }
 
 /* ===============================
-   FULLSCREEN (REELS STYLE)
+   FULLSCREEN VIEW (REELS STYLE)
 ================================ */
 function openFullscreen(startIndex) {
   currentIndex = startIndex;
 
   const overlay = document.createElement("div");
-  overlay.id = "fullscreenGallery";
-
   overlay.style.position = "fixed";
   overlay.style.top = "0";
   overlay.style.left = "0";
@@ -96,10 +104,10 @@ function openFullscreen(startIndex) {
   overlay.appendChild(img);
   document.body.appendChild(overlay);
 
-  // CLOSE
+  // Close on tap
   overlay.onclick = () => overlay.remove();
 
-  // SWIPE
+  // Swipe support
   let startX = 0;
 
   overlay.addEventListener("touchstart", (e) => {
@@ -110,10 +118,8 @@ function openFullscreen(startIndex) {
     let endX = e.changedTouches[0].clientX;
 
     if (endX < startX - 50) {
-      // NEXT
       currentIndex = (currentIndex + 1) % galleryData.length;
     } else if (endX > startX + 50) {
-      // PREV
       currentIndex = (currentIndex - 1 + galleryData.length) % galleryData.length;
     }
 
@@ -122,7 +128,7 @@ function openFullscreen(startIndex) {
 }
 
 /* ===============================
-   ACTIONS
+   ACTION BUTTONS
 ================================ */
 function attachActions(data) {
   const phoneBtn = document.getElementById("phoneBtn");
@@ -138,12 +144,14 @@ function attachActions(data) {
 
   if (yangoBtn) {
     yangoBtn.onclick = () => {
+      if (!data.yango_coordinates) return alert("No Yango location");
       window.open(`https://yango.com/en/zm/?destination=${data.yango_coordinates}`);
     };
   }
 
   if (googleBtn) {
     googleBtn.onclick = () => {
+      if (!data.GPS_coordinates) return alert("No GPS location");
       window.open(`https://www.google.com/maps?q=${data.GPS_coordinates}`);
     };
   }
@@ -151,7 +159,8 @@ function attachActions(data) {
   if (arrivalBtn) {
     arrivalBtn.onclick = (e) => {
       e.preventDefault();
-      notifyArrival(houseId, university, "student123", arrivalBtn);
+      const studentId = localStorage.getItem("user_id") || "";
+      notifyArrival(houseId, university, studentId, arrivalBtn);
     };
   }
 }
@@ -160,7 +169,7 @@ function attachActions(data) {
    NOTIFY ARRIVAL
 ================================ */
 async function notifyArrival(id, university, studentId, btn) {
-  console.log("📍 Sending arrival...");
+  console.log("📍 Notify arrival...");
 
   setButtonLoading(btn, true);
 
@@ -180,15 +189,15 @@ async function notifyArrival(id, university, studentId, btn) {
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.detail || "Failed");
+      alert(data.detail || "Failed to notify");
       return;
     }
 
-    alert("✅ Landlord notified");
+    alert("✅ Landlord notified of your arrival");
 
   } catch (err) {
-    console.error(err);
-    alert("Error notifying");
+    console.error("❌ Arrival error:", err);
+    alert("Error sending notification");
   } finally {
     setButtonLoading(btn, false);
   }
