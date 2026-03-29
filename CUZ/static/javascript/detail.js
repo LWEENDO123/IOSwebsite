@@ -1,29 +1,91 @@
 // /static/javascript/detail_controller.js
-// Rewritten with defensive checks and verbose debugging to trace runtime errors.
-// Drop this file in place of the existing detail.js and open DevTools Console to follow logs.
+// Fully instrumented, defensive, and debug-friendly detail page controller.
+// Paste this file to replace your existing detail.js. Open DevTools Console and Network -> Sources to inspect logs and trace failures.
 
-console.log("🚀 DETAIL CONTROLLER STARTED");
+(function __detail_debug_bootstrap__() {
+  const RUN_ID = Date.now().toString(36);
+  function now() { return new Date().toISOString(); }
 
+  window.__detail_trace = window.__detail_trace || function trace(point, meta) {
+    try {
+      const payload = { run: RUN_ID, time: now(), point, meta };
+      console.groupCollapsed(`TRACE ${point}`);
+      console.log(payload);
+      console.trace();
+      console.groupEnd();
+    } catch (e) {
+      console.error("trace() failed", e);
+    }
+  };
+
+  window.__detail_wrap = window.__detail_wrap || function wrap(fn, name) {
+    if (typeof fn !== "function") return fn;
+    return function wrapped(...args) {
+      window.__detail_trace(`${name} - enter`, { argsLength: args.length });
+      try {
+        const result = fn.apply(this, args);
+        if (result && typeof result.then === "function") {
+          result.then(
+            (v) => window.__detail_trace(`${name} - promise resolved`, { resultType: typeof v }),
+            (err) => window.__detail_trace(`${name} - promise rejected`, { error: String(err) })
+          );
+        } else {
+          window.__detail_trace(`${name} - exit`, { resultType: typeof result });
+        }
+        return result;
+      } catch (err) {
+        window.__detail_trace(`${name} - thrown`, { error: String(err) });
+        throw err;
+      }
+    };
+  };
+
+  window.addEventListener("error", (ev) => {
+    try {
+      console.error("GLOBAL ERROR:", {
+        message: ev.message,
+        filename: ev.filename,
+        lineno: ev.lineno,
+        colno: ev.colno,
+        error: ev.error && (ev.error.stack || String(ev.error))
+      });
+    } catch (e) {
+      console.error("global error handler failed", e);
+    }
+  });
+
+  window.addEventListener("unhandledrejection", (ev) => {
+    try {
+      console.error("UNHANDLED PROMISE REJECTION:", {
+        reason: ev.reason && (ev.reason.stack || String(ev.reason))
+      });
+    } catch (e) {
+      console.error("unhandledrejection handler failed", e);
+    }
+  });
+
+  console.info("detail_controller debug bootstrap loaded — use __detail_trace('point') and __detail_wrap(fn,'name')");
+})();
+
+// ----------------------
+// Config & params
+// ----------------------
 const BASE_URL = "https://klenoboardinghouse-production.up.railway.app";
-
-/* ===============================
-   PAGE PARAMETERS
-================================ */
 const params = new URLSearchParams(window.location.search);
 const houseId = params.get("id");
 const university = params.get("university");
 
-console.debug("Init params:", { houseId, university });
+__detail_trace("init.params", { houseId, university });
 
-/* ===============================
-   STATE
-================================ */
+// ----------------------
+// State
+// ----------------------
 let galleryData = [];
 let currentIndex = 0;
 
-/* ===============================
-   HELPERS
-================================ */
+// ----------------------
+// Helpers
+// ----------------------
 function setButtonLoading(btn, loading) {
   try {
     if (!btn) return;
@@ -42,31 +104,22 @@ function safeOpen(url) {
   }
 }
 
-function safeJsonParse(res) {
-  try {
-    return res.json ? res.json() : Promise.resolve(null);
-  } catch (e) {
-    console.warn("safeJsonParse failed:", e);
-    return Promise.resolve(null);
-  }
-}
-
-/* ===============================
-   FETCH DATA + PREMIUM CHECK
-================================ */
-async function loadBoardingHouse() {
-  console.debug("loadBoardingHouse start");
+// ----------------------
+// loadBoardingHouse
+// ----------------------
+const loadBoardingHouse = __detail_wrap(async function loadBoardingHouse() {
+  __detail_trace("loadBoardingHouse:start");
   if (!houseId) {
     console.error("Missing house id in query params");
     return;
   }
 
   const url = `${BASE_URL}/boardinghouse/${encodeURIComponent(houseId)}?university=${encodeURIComponent(university || "")}`;
-  console.debug("Fetching boarding house from:", url);
+  __detail_trace("loadBoardingHouse:fetch-url", { url });
 
   try {
     const res = await fetch(url);
-    console.debug("Fetch response status:", res.status);
+    __detail_trace("loadBoardingHouse:fetch-response", { status: res.status });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -79,46 +132,45 @@ async function loadBoardingHouse() {
       return null;
     });
 
-    console.debug("🏠 DATA:", data);
+    __detail_trace("loadBoardingHouse:data", { keys: data ? Object.keys(data) : null });
 
     if (!data || typeof data !== "object") {
       console.error("Invalid data shape:", data);
       return;
     }
 
-    // PREMIUM CHECK
-    // Accept boolean or string forms
+    // Interpret premium flag robustly
     const isPremium = data.premium === true || String(data.premium).toLowerCase() === "true";
-    console.debug("Premium flag:", data.premium, "interpreted:", isPremium);
+    __detail_trace("loadBoardingHouse:premium-check", { raw: data.premium, interpreted: isPremium });
 
     if (!isPremium) {
-      console.warn("🚫 Not premium → redirecting to payment page");
+      console.warn("Not premium → redirecting to payment page");
       try {
         localStorage.setItem("redirect_after_payment", window.location.href);
       } catch (e) {
         console.warn("Could not set redirect_after_payment in localStorage", e);
       }
-      // Redirect to the CUZ payment page (adjust path if needed)
+      // Adjust path if your payment page is elsewhere
       window.location.href = "/CUZ/payment_page.html";
       return;
     }
 
-    // Render UI
+    // Render and attach actions
     renderGallery(Array.isArray(data.gallery) ? data.gallery : []);
     attachActions(data);
 
   } catch (err) {
-    console.error("❌ Failed to load boarding house:", err, err?.stack);
+    console.error("loadBoardingHouse error:", err, err?.stack);
   } finally {
-    console.debug("loadBoardingHouse end");
+    __detail_trace("loadBoardingHouse:end");
   }
-}
+}, "loadBoardingHouse");
 
-/* ===============================
-   GALLERY
-================================ */
+// ----------------------
+// Gallery rendering
+// ----------------------
 function renderGallery(gallery = []) {
-  console.debug("renderGallery called, items:", gallery.length);
+  __detail_trace("renderGallery:start", { length: Array.isArray(gallery) ? gallery.length : 0 });
   const container = document.getElementById("imageSlider");
   if (!container) {
     console.warn("No imageSlider container found in DOM");
@@ -134,6 +186,7 @@ function renderGallery(gallery = []) {
     placeholder.style.padding = "12px";
     placeholder.style.color = "#666";
     container.appendChild(placeholder);
+    __detail_trace("renderGallery:empty");
     return;
   }
 
@@ -161,13 +214,15 @@ function renderGallery(gallery = []) {
       console.error("Error rendering gallery item", index, err);
     }
   });
+
+  __detail_trace("renderGallery:done", { rendered: galleryData.length });
 }
 
-/* ===============================
-   FULLSCREEN VIEW
-================================ */
+// ----------------------
+// Fullscreen viewer
+// ----------------------
 function openFullscreen(startIndex = 0) {
-  console.debug("openFullscreen startIndex:", startIndex);
+  __detail_trace("openFullscreen:start", { startIndex, galleryLength: galleryData.length });
   try {
     if (!Array.isArray(galleryData) || galleryData.length === 0) {
       console.warn("openFullscreen: no gallery data");
@@ -226,6 +281,7 @@ function openFullscreen(startIndex = 0) {
       try {
         img.src = galleryData[currentIndex]?.url || "";
         img.alt = galleryData[currentIndex]?.alt || `Image ${currentIndex + 1}`;
+        __detail_trace("updateImage", { currentIndex, src: img.src });
       } catch (e) {
         console.error("updateImage error:", e);
       }
@@ -289,18 +345,19 @@ function openFullscreen(startIndex = 0) {
       }
     }, { passive: true });
 
+    __detail_trace("openFullscreen:overlayAppended", { currentIndex });
   } catch (err) {
     console.error("openFullscreen error:", err, err?.stack);
   } finally {
-    console.debug("openFullscreen finished");
+    __detail_trace("openFullscreen:end");
   }
 }
 
-/* ===============================
-   ACTION BUTTONS
-================================ */
+// ----------------------
+// Actions
+// ----------------------
 function attachActions(data = {}) {
-  console.debug("attachActions data keys:", Object.keys(data || {}));
+  __detail_trace("attachActions:start", { keys: Object.keys(data || {}) });
   const phoneBtn = document.getElementById("phoneBtn");
   const yangoBtn = document.getElementById("yangoBtn");
   const googleBtn = document.getElementById("googleBtn");
@@ -312,7 +369,7 @@ function attachActions(data = {}) {
       phoneBtn.onclick = () => {
         try {
           const tel = String(data.phone_number).trim();
-          console.debug("Dialing:", tel);
+          __detail_trace("phoneBtn:click", { tel });
           window.location.href = `tel:${tel}`;
         } catch (err) {
           console.error("phoneBtn onclick error:", err);
@@ -361,13 +418,15 @@ function attachActions(data = {}) {
       }
     };
   }
+
+  __detail_trace("attachActions:end");
 }
 
-/* ===============================
-   NOTIFY ARRIVAL
-================================ */
-async function notifyArrival(id, universityParam, studentId, btn) {
-  console.debug("notifyArrival called", { id, universityParam, studentId });
+// ----------------------
+// Notify arrival
+// ----------------------
+const notifyArrival = __detail_wrap(async function notifyArrival(id, universityParam, studentId, btn) {
+  __detail_trace("notifyArrival:start", { id, universityParam, studentId });
   setButtonLoading(btn, true);
 
   try {
@@ -383,14 +442,14 @@ async function notifyArrival(id, universityParam, studentId, btn) {
       `${BASE_URL}/boardinghouse/${encodeURIComponent(id)}/notify_arrival`
     ];
 
-    console.debug("notifyArrival candidates:", candidates);
+    __detail_trace("notifyArrival:candidates", { candidates });
 
     let res = null;
     let lastErr = null;
 
     for (const url of candidates) {
       try {
-        console.debug("Trying notify URL:", url);
+        __detail_trace("notifyArrival:trying", { url });
         res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -409,7 +468,7 @@ async function notifyArrival(id, universityParam, studentId, btn) {
     }
 
     const payload = await res.json().catch(() => null);
-    console.debug("notifyArrival response:", res.status, payload);
+    __detail_trace("notifyArrival:response", { status: res.status, payload });
 
     if (!res.ok) {
       const msg = (payload && (payload.detail || payload.message)) || `Failed to notify (status ${res.status})`;
@@ -419,25 +478,26 @@ async function notifyArrival(id, universityParam, studentId, btn) {
 
     alert("✅ Landlord notified of your arrival");
   } catch (err) {
-    console.error("❌ Arrival error:", err, err?.stack);
+    console.error("notifyArrival error:", err, err?.stack);
     alert("Error sending notification");
   } finally {
     setButtonLoading(btn, false);
-    console.debug("notifyArrival finished");
+    __detail_trace("notifyArrival:end");
   }
-}
+}, "notifyArrival");
 
-/* ===============================
-   INIT
-================================ */
-document.addEventListener("DOMContentLoaded", () => {
-  console.debug("DOMContentLoaded fired");
+// ----------------------
+// Init
+// ----------------------
+document.addEventListener("DOMContentLoaded", __detail_wrap(() => {
+  __detail_trace("DOMContentLoaded");
   try {
     loadBoardingHouse();
   } catch (e) {
     console.error("Initialization error:", e, e?.stack);
   }
-});
+}, "DOMContentLoaded-handler"));
 
-// End of file
+// End marker
+__detail_trace("detail_controller:loaded");
 console.debug("detail_controller.js loaded");
