@@ -1,6 +1,7 @@
 // /static/javascript/detail_controller.js
-// Fully instrumented, defensive, and debug-friendly detail page controller.
-// Paste this file to replace your existing detail.js. Open DevTools Console and Network -> Sources to inspect logs and trace failures.
+// Fully rewritten, defensive, and debug-friendly detail page controller.
+// Includes global instrumentation, robust fetch logic (uses authorizedGet), and clear console traces.
+// Replace your existing detail.js with this file. Open DevTools Console and Network -> Sources to inspect logs.
 
 (function __detail_debug_bootstrap__() {
   const RUN_ID = Date.now().toString(36);
@@ -104,63 +105,138 @@ function safeOpen(url) {
   }
 }
 
+function showUserError(msg) {
+  try {
+    console.warn("User error:", msg);
+    let el = document.getElementById("detailError");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "detailError";
+      el.style.background = "#fff3f3";
+      el.style.color = "#a00";
+      el.style.padding = "12px";
+      el.style.margin = "12px";
+      el.style.borderRadius = "8px";
+      el.style.fontWeight = "600";
+      const container = document.querySelector("main") || document.body;
+      container.insertBefore(el, container.firstChild);
+    }
+    el.textContent = msg;
+  } catch (e) {
+    console.error("showUserError failed:", e);
+  }
+}
+
+function renderRetryUI(retryFn) {
+  try {
+    let wrapper = document.getElementById("detailRetry");
+    if (!wrapper) {
+      wrapper = document.createElement("div");
+      wrapper.id = "detailRetry";
+      wrapper.style.margin = "12px";
+      const container = document.querySelector("main") || document.body;
+      container.insertBefore(wrapper, container.firstChild ? container.firstChild.nextSibling : container.firstChild);
+    }
+    wrapper.innerHTML = "";
+    const btn = document.createElement("button");
+    btn.textContent = "Retry loading listing";
+    btn.style.padding = "8px 12px";
+    btn.style.borderRadius = "8px";
+    btn.onclick = () => {
+      wrapper.innerHTML = "Retrying…";
+      retryFn();
+    };
+    wrapper.appendChild(btn);
+  } catch (e) {
+    console.error("renderRetryUI failed:", e);
+  }
+}
+
 // ----------------------
-// loadBoardingHouse
+// loadBoardingHouse (uses authorizedGet)
 // ----------------------
 const loadBoardingHouse = __detail_wrap(async function loadBoardingHouse() {
   __detail_trace("loadBoardingHouse:start");
   if (!houseId) {
     console.error("Missing house id in query params");
+    showUserError("Missing listing id. Please open the listing link again.");
     return;
   }
 
-  const url = `${BASE_URL}/boardinghouse/${encodeURIComponent(houseId)}?university=${encodeURIComponent(university || "")}`;
+  // Ensure we have a student id (frontend stores it in localStorage)
+  const studentId = localStorage.getItem("user_id") || "";
+  if (!studentId) {
+    console.warn("No student_id in localStorage; user may not be logged in");
+    showUserError("Please sign in to view this listing.");
+    return;
+  }
+
+  const url = `${BASE_URL}/home/boardinghouse/${encodeURIComponent(houseId)}?university=${encodeURIComponent(university || "")}&student_id=${encodeURIComponent(studentId)}`;
   __detail_trace("loadBoardingHouse:fetch-url", { url });
 
   try {
-    const res = await fetch(url);
+    // Use authorizedGet if available; otherwise fallback to fetch with token
+    let res;
+    if (typeof authorizedGet === "function") {
+      try {
+        res = await authorizedGet(url);
+      } catch (err) {
+        console.warn("authorizedGet failed, falling back to fetch:", err);
+        res = null;
+      }
+    }
+
+    if (!res) {
+      // fallback: include token from localStorage if present
+      const token = localStorage.getItem("access_token") || "";
+      const headers = { "Accept": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      res = await fetch(url, { method: "GET", headers, credentials: "same-origin" });
+    }
+
     __detail_trace("loadBoardingHouse:fetch-response", { status: res.status });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.error("Failed to fetch boarding house:", res.status, text);
+    // Read body for debugging
+    let bodyText = "";
+    try {
+      bodyText = await res.text();
+      try { bodyText = JSON.parse(bodyText); } catch (e) { /* keep raw text */ }
+    } catch (e) {
+      console.warn("Could not read response body", e);
+    }
+
+    if (res.status === 200) {
+      const data = (typeof bodyText === "object") ? bodyText : (() => {
+        try { return JSON.parse(String(bodyText)); } catch (e) { return bodyText; }
+      })();
+
+      __detail_trace("loadBoardingHouse:success", { keys: data ? Object.keys(data) : null });
+      // Backend returns BoardingHouseSummary with "gallery" field (array)
+      renderGallery(Array.isArray(data.gallery) ? data.gallery : []);
+      attachActions(data);
       return;
     }
 
-    const data = await res.json().catch((e) => {
-      console.error("JSON parse error:", e);
-      return null;
-    });
-
-    __detail_trace("loadBoardingHouse:data", { keys: data ? Object.keys(data) : null });
-
-    if (!data || typeof data !== "object") {
-      console.error("Invalid data shape:", data);
+    if (res.status === 401 || res.status === 403) {
+      console.error("Auth error fetching boarding house:", res.status, bodyText);
+      showUserError("You must be signed in to view this listing. Please login and try again.");
       return;
     }
 
-    // Interpret premium flag robustly
-    const isPremium = data.premium === true || String(data.premium).toLowerCase() === "true";
-    __detail_trace("loadBoardingHouse:premium-check", { raw: data.premium, interpreted: isPremium });
-
-    if (!isPremium) {
-      console.warn("Not premium → redirecting to payment page");
-      try {
-        localStorage.setItem("redirect_after_payment", window.location.href);
-      } catch (e) {
-        console.warn("Could not set redirect_after_payment in localStorage", e);
-      }
-      // Adjust path if your payment page is elsewhere
-      window.location.href = "/CUZ/payment_page.html";
+    if (res.status === 404) {
+      console.warn("Listing not found:", res.status, bodyText);
+      showUserError("Listing not found. It may have been removed or the university is incorrect.");
+      renderRetryUI(loadBoardingHouse);
       return;
     }
 
-    // Render and attach actions
-    renderGallery(Array.isArray(data.gallery) ? data.gallery : []);
-    attachActions(data);
-
+    console.error("Unexpected response fetching boarding house:", res.status, bodyText);
+    showUserError(`Server returned ${res.status}: ${JSON.stringify(bodyText)}`);
+    renderRetryUI(loadBoardingHouse);
   } catch (err) {
-    console.error("loadBoardingHouse error:", err, err?.stack);
+    console.error("Network or unexpected error fetching boarding house:", err);
+    showUserError("Network error. Please check your connection and try again.");
+    renderRetryUI(loadBoardingHouse);
   } finally {
     __detail_trace("loadBoardingHouse:end");
   }
@@ -437,7 +513,7 @@ const notifyArrival = __detail_wrap(async function notifyArrival(id, universityP
     }
 
     const candidates = [
-      `${BASE_URL}/boardinghouse/${encodeURIComponent(id)}/notify_arrival?university=${encodeURIComponent(universityParam || "")}`,
+      `${BASE_URL}/home/boardinghouse/${encodeURIComponent(id)}/notify_arrival?university=${encodeURIComponent(universityParam || "")}`,
       `${BASE_URL}/${encodeURIComponent(universityParam || "")}/boardinghouse/${encodeURIComponent(id)}/notify_arrival`,
       `${BASE_URL}/boardinghouse/${encodeURIComponent(id)}/notify_arrival`
     ];
@@ -450,12 +526,28 @@ const notifyArrival = __detail_wrap(async function notifyArrival(id, universityP
     for (const url of candidates) {
       try {
         __detail_trace("notifyArrival:trying", { url });
-        res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ student_id: studentId })
-        });
-        // break on first response object (even if not ok)
+        // Use authorizedGet if available for POST; otherwise fallback to fetch with token
+        if (typeof authorizedPost === "function") {
+          try {
+            res = await authorizedPost(url, { student_id: studentId });
+          } catch (err) {
+            console.warn("authorizedPost failed, falling back to fetch:", err);
+            res = null;
+          }
+        }
+
+        if (!res) {
+          const token = localStorage.getItem("access_token") || "";
+          const headers = { "Content-Type": "application/json" };
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          res = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ student_id: studentId }),
+            credentials: "same-origin"
+          });
+        }
+
         if (res) break;
       } catch (err) {
         lastErr = err;
@@ -467,7 +559,14 @@ const notifyArrival = __detail_wrap(async function notifyArrival(id, universityP
       throw lastErr || new Error("No response from notify endpoints");
     }
 
-    const payload = await res.json().catch(() => null);
+    let payload = null;
+    try {
+      const text = await res.text();
+      try { payload = JSON.parse(text); } catch (e) { payload = text; }
+    } catch (e) {
+      console.warn("Could not parse notify response body", e);
+    }
+
     __detail_trace("notifyArrival:response", { status: res.status, payload });
 
     if (!res.ok) {
