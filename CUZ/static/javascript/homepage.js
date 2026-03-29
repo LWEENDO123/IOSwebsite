@@ -1,11 +1,12 @@
+// /static/javascript/homepage.js
 import { authorizedGet } from "./tokenManager.js";
 
 /*
-  Full homepage controller
-  - Normalizes image URLs to ensure they resolve correctly
-  - Adds Search button to trigger scoped endpoint (/home/scoped)
-  - Supports filters, pagination, infinite scroll
-  - Minimal DOM assumptions: #houseList, #loader, #universitySelect, #searchBtn, .filter
+  Homepage controller (resilient when user is not signed in)
+  - Uses authorizedGet when available
+  - Falls back to unauthenticated fetch for public listing if allowed
+  - If unauthenticated, shows limited view and a sign-in prompt
+  - Passes student_id to detail page only when present
 */
 
 const baseUrl = "https://klenoboardinghouse-production.up.railway.app";
@@ -25,6 +26,9 @@ const houseListEl = document.getElementById("houseList");
 const loaderEl = document.getElementById("loader");
 const uniSelect = document.getElementById("universitySelect");
 const searchBtn = document.getElementById("searchBtn");
+const signinHintEl = document.getElementById("signinHint"); // optional element to show sign-in prompt
+
+function log(...args) { console.debug("[HOMEPAGE]", ...args); }
 
 // Helper: pick correct gender icon
 function getGenderIcon(gender) {
@@ -39,7 +43,6 @@ function getGenderIcon(gender) {
 function normalizeImageUrl(url) {
   if (!url) return "https://via.placeholder.com/400x200";
   if (url.startsWith("http")) return url;
-  // Ensure path starts with /media/
   if (!url.startsWith("/media/")) {
     return `${baseUrl}/media/${url.replace(/^\/+/, "")}`;
   }
@@ -52,20 +55,31 @@ function showLoader(show) {
   loaderEl.style.display = show ? "block" : "none";
 }
 
+// Show sign-in hint
+function showSignInHint(show, message) {
+  if (!signinHintEl) return;
+  signinHintEl.style.display = show ? "block" : "none";
+  signinHintEl.textContent = message || "Sign in to see full details and contact landlords.";
+}
+
 // Render a single house card
-function renderHouse(house) {
+function renderHouse(house, limited = false) {
   const card = document.createElement("div");
   card.className = "house-card";
 
   const coverImage = normalizeImageUrl(house.cover_image || house.image);
   const genderIcon = getGenderIcon(house.gender);
 
+  // If limited view, hide sensitive fields like price or contact
+  const name = (house.name_boardinghouse || house.name || '').replace(/"/g,'');
+  const location = house.location || '';
+
   card.innerHTML = `
-    <img src="${coverImage}" alt="${(house.name_boardinghouse || house.name || '').replace(/"/g,'')}" loading="lazy">
+    <img src="${coverImage}" alt="${name}" loading="lazy">
     <div class="info">
       <div class="details">
-        <p class="house-name">${house.name_boardinghouse || house.name || ''}</p>
-        <p class="location">📍 ${house.location || ''}</p>
+        <p class="house-name">${name}</p>
+        <p class="location">📍 ${location}</p>
       </div>
       <div class="gender-badge">
         <img src="${genderIcon}" alt="${house.gender || 'both'}">
@@ -74,18 +88,21 @@ function renderHouse(house) {
   `;
 
   card.addEventListener("click", () => {
-    console.log("[DEBUG] Card clicked:", house.id);
+    log("Card clicked:", house.id);
+    // Pass student_id only if present
     const uniParam = selectedUniversity || house.university || currentUserUniversity || "";
     if (!uniParam) {
       alert("University not available. Please select your university.");
       return;
     }
     const uniQuery = `&university=${encodeURIComponent(uniParam)}`;
-    window.location.href = `/detail.html?id=${encodeURIComponent(house.id)}${uniQuery}&student_id=${encodeURIComponent(studentId)}`;
+    const studentQuery = studentId ? `&student_id=${encodeURIComponent(studentId)}` : "";
+    // Use the correct detail path (adjust if your detail page path differs)
+    window.location.href = `/detail.html?id=${encodeURIComponent(house.id)}${uniQuery}${studentQuery}`;
   });
 
   houseListEl.appendChild(card);
-  console.log("[DEBUG] Card appended for:", house.name_boardinghouse || house.name);
+  log("Card appended for:", name);
 }
 
 // Build list URL depending on scopedMode and selectedUniversity
@@ -102,6 +119,37 @@ function buildListUrl(pageNum = 1) {
   return `${baseUrl}/home?student_id=${encodeURIComponent(studentId)}${uniParam}${scopeParam}${pageParam}${filterParam}`;
 }
 
+// Generic fetch wrapper that prefers authorizedGet but handles unauthenticated gracefully
+async function fetchWithAuthFallback(url, opts = {}) {
+  // Try authorizedGet if available
+  if (typeof authorizedGet === "function") {
+    try {
+      log("Using authorizedGet for", url);
+      const res = await authorizedGet(url);
+      // If authorizedGet returns parsed JSON instead of Response, normalize
+      if (res && typeof res.status === "number") return res;
+      // If it returned parsed data, wrap it in a fake Response-like object
+      return { ok: true, status: 200, json: async () => res, text: async () => JSON.stringify(res) };
+    } catch (err) {
+      log("authorizedGet failed:", err);
+      // fall through to unauthenticated fetch
+    }
+  }
+
+  // Fallback: unauthenticated fetch (may be blocked by backend)
+  try {
+    const token = localStorage.getItem("access_token") || "";
+    const headers = { "Accept": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    log("Falling back to fetch for", url);
+    const res = await fetch(url, { method: "GET", headers, credentials: "same-origin", ...opts });
+    return res;
+  } catch (err) {
+    log("Network fetch failed:", err);
+    throw err;
+  }
+}
+
 // Fetch houses
 async function fetchHouses(refresh = false) {
   if (isLoading) return;
@@ -116,14 +164,31 @@ async function fetchHouses(refresh = false) {
   showLoader(true);
 
   const url = buildListUrl(page);
-  console.log("[DEBUG] Fetching houses from:", url);
+  log("Fetching houses from:", url);
 
   try {
-    const res = await authorizedGet(url);
-    const data = await res.json().catch(() => null);
+    const res = await fetchWithAuthFallback(url);
+    // If server returned 401/403, show sign-in hint and try to render limited data if any
+    if (res.status === 401 || res.status === 403) {
+      log("Auth required or invalid token:", res.status);
+      showSignInHint(true, "You are not signed in. Sign in to see full details and contact landlords.");
+      // Try to parse body for any public data
+      let data = null;
+      try { data = await res.json(); } catch (e) { data = null; }
+      // If no data, show limited message and stop
+      if (!data || !data.data) {
+        if (page === 1 && houseListEl) houseListEl.innerHTML = `<div class="loader">Sign in to view listings.</div>`;
+        return;
+      }
+      // Otherwise continue with limited data
+    }
 
-    if (!res.ok) {
-      console.error("[DEBUG] Failed response:", res.status, data);
+    const data = await (async () => {
+      try { return await res.json(); } catch (e) { return null; }
+    })();
+
+    if (!res.ok && res.status !== 401 && res.status !== 403) {
+      log("Failed response:", res.status, data);
       if (page === 1 && houseListEl) houseListEl.innerHTML = `<div class="loader">No listings found.</div>`;
       return;
     }
@@ -135,12 +200,19 @@ async function fetchHouses(refresh = false) {
       return;
     }
 
-    houses.forEach(renderHouse);
+    // If user is not signed in, show sign-in hint but still render cards (limited)
+    if (!studentId) {
+      showSignInHint(true, "You are browsing in guest mode. Sign in to contact landlords and see full details.");
+    } else {
+      showSignInHint(false);
+    }
+
+    houses.forEach(h => renderHouse(h, !studentId));
     page++;
     hasMore = houses.length === limit;
-    console.log("[DEBUG] hasMore:", hasMore, "next page:", page);
+    log("hasMore:", hasMore, "next page:", page);
   } catch (err) {
-    console.error("[DEBUG] Error fetching houses:", err);
+    console.error("[HOMEPAGE] Error fetching houses:", err);
     if (page === 1 && houseListEl) houseListEl.innerHTML = `<div class="loader">Error loading listings.</div>`;
   } finally {
     isLoading = false;
@@ -160,7 +232,7 @@ document.querySelectorAll(".filter").forEach(btn => {
     document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     selectedFilter = btn.dataset.filter || "all";
-    console.log("[DEBUG] Filter selected:", selectedFilter);
+    log("Filter selected:", selectedFilter);
     page = 1;
     hasMore = true;
     if (houseListEl) houseListEl.innerHTML = "";
@@ -172,7 +244,7 @@ document.querySelectorAll(".filter").forEach(btn => {
 if (uniSelect) {
   uniSelect.addEventListener("change", (e) => {
     selectedUniversity = e.target.value || "";
-    console.log("[DEBUG] University selected:", selectedUniversity);
+    log("University selected:", selectedUniversity);
   });
 }
 
@@ -183,7 +255,7 @@ if (searchBtn) {
       alert("Please select a university first.");
       return;
     }
-    console.log("[DEBUG] Search clicked, using scoped endpoint for:", selectedUniversity);
+    log("Search clicked, using scoped endpoint for:", selectedUniversity);
     page = 1;
     hasMore = true;
     if (houseListEl) houseListEl.innerHTML = "";
@@ -209,6 +281,12 @@ window.addEventListener("scroll", () => {
       uniSelect.value = currentUserUniversity;
       selectedUniversity = currentUserUniversity;
     }
+  }
+  // If no studentId, show sign-in hint but still load public/limited listings
+  if (!studentId) {
+    showSignInHint(true, "You are browsing as a guest. Sign in to access full features.");
+  } else {
+    showSignInHint(false);
   }
   fetchHouses(true);
 })();
