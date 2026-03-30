@@ -1,43 +1,31 @@
+import { authorizedGet, authorizedPost } from "./tokenManager.js";
+
 console.log("🚀 DETAIL CONTROLLER STARTED");
 
 /* ===============================
-   GLOBAL CONFIG (FIXED)
+   BASE URL
 ================================ */
-const BASE_URL = "https://klenoboardinghouse-production.up.railway.app";
+const BASE_URL = "https://klenoboardinghouse-production.up.railway.app/home";
 
 /* ===============================
-   PAGE PARAMETERS + DEBUG
+   PAGE PARAMETERS
 ================================ */
 const params = new URLSearchParams(window.location.search);
 
 const houseId = params.get("id");
 const university = params.get("university");
-
 const studentId =
   params.get("student_id") ||
   localStorage.getItem("user_id");
 
-console.group("📦 PARAM DEBUG");
+/* ===============================
+   DEBUG
+================================ */
+console.log("📦 PARAM DEBUG");
 console.log("Full URL:", window.location.href);
 console.log("houseId:", houseId);
 console.log("university:", university);
 console.log("studentId:", studentId);
-console.groupEnd();
-
-debugger;
-
-/* ===============================
-   VALIDATION (CRITICAL)
-================================ */
-if (!houseId || !university || !studentId) {
-  console.error("❌ Missing required params", {
-    houseId,
-    university,
-    studentId
-  });
-
-  alert("Missing required data. Please reopen from homepage.");
-}
 
 /* ===============================
    STATE
@@ -46,24 +34,10 @@ let galleryData = [];
 let currentIndex = 0;
 
 /* ===============================
-   AUTH HELPER
-================================ */
-function getAuthHeaders() {
-  const token = localStorage.getItem("access_token");
-
-  console.log("🔐 TOKEN EXISTS:", !!token);
-
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-}
-
-/* ===============================
-   FETCH DATA
+   LOAD BOARDING HOUSE (FIXED)
 ================================ */
 async function loadBoardingHouse() {
-  console.group("📡 LOAD BOARDING HOUSE");
+  console.log("📡 LOAD BOARDING HOUSE");
 
   try {
     if (!studentId) {
@@ -72,50 +46,36 @@ async function loadBoardingHouse() {
       return;
     }
 
-    const url =
-      `${BASE_URL}/home/boardinghouse/${houseId}` +
-      `?university=${university}&student_id=${studentId}`;
+    const url = `${BASE_URL}/boardinghouse/${houseId}?university=${university}&student_id=${studentId}`;
 
     console.log("🌍 REQUEST URL:", url);
 
-    debugger;
-
-    const res = await fetch(url, {
-      headers: getAuthHeaders(),
-    });
+    // ✅ USE AUTHORIZED GET (THIS FIXES YOUR 401)
+    const res = await authorizedGet(url);
 
     console.log("📡 STATUS:", res.status);
 
     if (res.status === 401) {
-      console.warn("🔐 Unauthorized");
+      console.warn("🔐 Unauthorized AFTER retry");
       alert("Session expired. Please login again.");
       return;
     }
 
     const data = await res.json();
 
-    console.log("🏠 RESPONSE DATA:", data);
-
-    if (!data) {
-      console.warn("⚠️ Empty response");
-      return;
-    }
+    console.log("🏠 DATA:", data);
 
     populateDetail(data);
 
   } catch (err) {
     console.error("❌ LOAD ERROR:", err);
   }
-
-  console.groupEnd();
 }
 
 /* ===============================
    POPULATE PAGE
 ================================ */
 function populateDetail(data) {
-  console.log("🧩 POPULATING PAGE");
-
   renderGallery(data.gallery || []);
   attachActions(data);
 }
@@ -125,26 +85,18 @@ function populateDetail(data) {
 ================================ */
 function renderGallery(gallery) {
   const container = document.getElementById("imageSlider");
-
-  console.log("🖼️ GALLERY INIT:", gallery);
-
-  if (!container) {
-    console.error("❌ imageSlider not found");
-    return;
-  }
+  if (!container) return;
 
   container.innerHTML = "";
   galleryData = gallery;
 
-  if (!gallery.length) {
-    console.warn("⚠️ No images available");
-    return;
-  }
+  if (!gallery.length) return;
 
   gallery.forEach((item, index) => {
     const img = document.createElement("img");
 
     img.src = item.url;
+
     img.style.width = "100%";
     img.style.height = "100%";
     img.style.objectFit = "cover";
@@ -157,11 +109,9 @@ function renderGallery(gallery) {
 }
 
 /* ===============================
-   FULLSCREEN SWIPE VIEW
+   FULLSCREEN (SWIPE)
 ================================ */
 function openFullscreen(startIndex) {
-  console.log("🖼️ OPEN FULLSCREEN:", startIndex);
-
   currentIndex = startIndex;
 
   const overlay = document.createElement("div");
@@ -194,7 +144,7 @@ function openFullscreen(startIndex) {
   });
 
   overlay.addEventListener("touchend", (e) => {
-    const endX = e.changedTouches[0].clientX;
+    let endX = e.changedTouches[0].clientX;
 
     if (endX < startX - 50) {
       currentIndex = (currentIndex + 1) % galleryData.length;
@@ -202,8 +152,6 @@ function openFullscreen(startIndex) {
       currentIndex =
         (currentIndex - 1 + galleryData.length) % galleryData.length;
     }
-
-    console.log("➡️ SWIPE INDEX:", currentIndex);
 
     img.src = galleryData[currentIndex].url;
   });
@@ -213,105 +161,62 @@ function openFullscreen(startIndex) {
    ACTION BUTTONS
 ================================ */
 function attachActions(data) {
-  console.group("🔘 BUTTON SETUP");
-
   const phoneBtn = document.getElementById("phoneBtn");
   const yangoBtn = document.getElementById("yangoBtn");
   const googleBtn = document.getElementById("googleBtn");
   const arrivalBtn = document.getElementById("arrivalBtn");
 
-  console.log("BUTTON CHECK:", {
-    phoneBtn,
-    yangoBtn,
-    googleBtn,
-    arrivalBtn
-  });
-
-  debugger;
-
   if (phoneBtn) {
     phoneBtn.onclick = () => {
-      console.log("📞 Calling:", data.phone_number);
       window.location.href = `tel:${data.phone_number}`;
     };
   }
 
   if (yangoBtn) {
     yangoBtn.onclick = () => {
-      console.log("🚕 YANGO CLICKED");
-
-      if (!data.yango_coordinates) {
-        alert("No Yango location");
-        return;
-      }
-
-      const url =
-        `${BASE_URL}/yango/${houseId}` +
-        `?university=${university}&student_id=${studentId}`;
-
-      console.log("🌍 YANGO URL:", url);
-
-      debugger;
-
-      window.location.href = url; // ✅ MOBILE SAFE
+      window.open(
+        `${BASE_URL}/yango/${houseId}?university=${university}&student_id=${studentId}`,
+        "_blank"
+      );
     };
   }
 
   if (googleBtn) {
     googleBtn.onclick = () => {
-      console.log("🗺️ GOOGLE CLICKED");
-
-      if (!data.GPS_coordinates) {
-        alert("No GPS location");
-        return;
-      }
-
-      const url =
-        `${BASE_URL}/google/${houseId}` +
-        `?university=${university}&student_id=${studentId}`;
-
-      console.log("🌍 GOOGLE URL:", url);
-
-      debugger;
-
-      window.location.href = url; // ✅ MOBILE SAFE
+      window.open(
+        `${BASE_URL}/google/${houseId}?university=${university}&student_id=${studentId}`,
+        "_blank"
+      );
     };
   }
 
   if (arrivalBtn) {
     arrivalBtn.onclick = (e) => {
       e.preventDefault();
-      console.log("📡 ARRIVAL CLICKED");
-      notifyArrival();
+      notifyArrival(arrivalBtn);
     };
   }
-
-  console.groupEnd();
 }
 
 /* ===============================
-   NOTIFY ARRIVAL
+   NOTIFY ARRIVAL (FIXED)
 ================================ */
-async function notifyArrival() {
-  console.group("📡 NOTIFY ARRIVAL");
+async function notifyArrival(btn) {
+  console.log("📍 NOTIFY ARRIVAL");
 
   try {
-    const url =
-      `${BASE_URL}/${university}/boardinghouse/${houseId}/notify_arrival`;
+    const url = `${BASE_URL}/${university}/boardinghouse/${houseId}/notify_arrival`;
 
-    console.log("POST URL:", url);
+    console.log("🌍 POST URL:", url);
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        student_id: studentId,
-      }),
+    // ✅ USE AUTHORIZED POST
+    const res = await authorizedPost(url, {
+      student_id: studentId,
     });
 
-    const data = await res.json();
+    console.log("📡 STATUS:", res.status);
 
-    console.log("📥 RESPONSE:", data);
+    const data = await res.json();
 
     if (!res.ok) {
       alert(data.detail || "Failed");
@@ -323,8 +228,6 @@ async function notifyArrival() {
   } catch (err) {
     console.error("❌ ARRIVAL ERROR:", err);
   }
-
-  console.groupEnd();
 }
 
 /* ===============================
